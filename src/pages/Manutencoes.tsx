@@ -14,7 +14,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { fmtBRL, fmtDate, fmtNumber } from "@/lib/format";
 import type { Manutencao, Veiculo } from "@/lib/types";
-import { Plus, Wrench, ShieldCheck, AlertTriangle, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Plus, Wrench, ShieldCheck, AlertTriangle, MoreVertical, Pencil, Trash2, Download } from "lucide-react";
+import { downloadCSV } from "@/lib/csv";
+import { EmptyState } from "@/components/EmptyState";
+import { CardGridSkeleton } from "@/components/Skeletons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export default function Manutencoes() {
   const { rows, loading, insert, update, remove } = useTable<Manutencao>("manutencoes");
@@ -75,12 +79,27 @@ export default function Manutencoes() {
       <PageHeader
         title="Manutenções"
         subtitle="Histórico, custos e próximas revisões"
-        actions={isAdmin && (
-          <FormDialog<Manutencao>
-            title="Nova manutenção" fields={fields} onSubmit={insert}
-            trigger={<Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Nova manutenção</Button>}
-          />
-        )}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" disabled={filtered.length === 0}
+              onClick={() => downloadCSV(
+                `manutencoes_${new Date().toISOString().slice(0,10)}.csv`,
+                ["Veículo", "Tipo", "Data", "Km", "Descrição", "Oficina", "Custo", "Status"],
+                filtered.map(m => [
+                  veicMap[m.veiculo_id]?.placa ?? "—", m.tipo, m.data, m.km_momento,
+                  m.descricao ?? "", m.oficina ?? "", m.custo_total, m.status,
+                ]),
+              )}>
+              <Download className="mr-1 h-4 w-4" />Exportar CSV
+            </Button>
+            {isAdmin && (
+              <FormDialog<Manutencao>
+                title="Nova manutenção" fields={fields} onSubmit={insert}
+                trigger={<Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Nova manutenção</Button>}
+              />
+            )}
+          </div>
+        }
       />
 
       <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-3 lg:grid-cols-6">
@@ -117,9 +136,10 @@ export default function Manutencoes() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <CardGridSkeleton count={6} />
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhuma manutenção encontrada.</CardContent></Card>
+        <EmptyState icon={Wrench} title="Nenhuma manutenção encontrada"
+          description="Ajuste os filtros ou registre a primeira manutenção." />
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map(m => {
