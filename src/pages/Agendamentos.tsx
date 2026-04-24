@@ -43,7 +43,7 @@ const inRange = (day: Date, start: string, end: string | null) => {
 };
 
 export default function Agendamentos() {
-  const { rows, loading, insert, update, reload } = useTable<Agendamento>("agendamentos");
+  const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
   const { isAdmin } = useAuth();
   const { toast } = useToast();
 
