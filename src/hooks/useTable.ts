@@ -18,17 +18,17 @@ export function useTable<T extends { id: string }>(table: string) {
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [table]);
 
   const insert = async (values: Partial<T>) => {
-    const { error } = await supabase.from(table as any).insert(values as any);
+    const { error } = await (supabase.from(table as any) as any).insert(values);
     if (error) { toast({ title: "Erro ao criar", description: error.message, variant: "destructive" }); throw error; }
     toast({ title: "Registro criado" }); await reload();
   };
   const update = async (id: string, values: Partial<T>) => {
-    const { error } = await supabase.from(table as any).update(values as any).eq("id", id);
+    const { error } = await (supabase.from(table as any) as any).update(values).eq("id", id);
     if (error) { toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" }); throw error; }
     toast({ title: "Atualizado" }); await reload();
   };
   const remove = async (id: string) => {
-    const { error } = await supabase.from(table as any).delete().eq("id", id);
+    const { error } = await (supabase.from(table as any) as any).delete().eq("id", id);
     if (error) { toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Removido" }); await reload();
   };
