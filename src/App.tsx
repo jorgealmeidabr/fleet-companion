@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Setup from "./pages/Setup";
 import Veiculos from "./pages/Veiculos";
+import VeiculoDetalhe from "./pages/VeiculoDetalhe";
 import Motoristas from "./pages/Motoristas";
 import Manutencoes from "./pages/Manutencoes";
 import Abastecimentos from "./pages/Abastecimentos";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Protected><Index /></Protected>} />
             <Route path="/veiculos" element={<Protected><Veiculos /></Protected>} />
+            <Route path="/veiculos/:id" element={<Protected><VeiculoDetalhe /></Protected>} />
             <Route path="/motoristas" element={<Protected><Motoristas /></Protected>} />
             <Route path="/manutencoes" element={<Protected><Manutencoes /></Protected>} />
             <Route path="/abastecimentos" element={<Protected><Abastecimentos /></Protected>} />
