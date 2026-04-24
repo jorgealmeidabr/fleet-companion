@@ -15,15 +15,22 @@ import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtDate } from "@/lib/format";
 import type { Motorista } from "@/lib/types";
-import { Plus, Search, MoreVertical, Pencil, Eye, AlertTriangle } from "lucide-react";
+import { Plus, Search, MoreVertical, Pencil, Eye, AlertTriangle, Users } from "lucide-react";
+import { validarCNH, formatarCNH, validarEmail, validarTelefone, formatarTelefone } from "@/lib/validators";
+import { EmptyState } from "@/components/EmptyState";
+import { CardGridSkeleton } from "@/components/Skeletons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const fields: FieldDef[] = [
   { name: "nome", label: "Nome", required: true },
-  { name: "cnh_numero", label: "Número CNH", required: true },
-  { name: "cnh_categoria", label: "Categoria CNH", required: true },
+  { name: "cnh_numero", label: "Número CNH", required: true,
+    placeholder: "11 dígitos", format: formatarCNH, validate: validarCNH },
+  { name: "cnh_categoria", label: "Categoria CNH", type: "select", required: true,
+    options: ["A","B","AB","C","D","E"].map(c => ({ label: c, value: c })) },
   { name: "cnh_validade", label: "Validade CNH", type: "date", required: true },
-  { name: "telefone", label: "Telefone" },
-  { name: "email", label: "E-mail" },
+  { name: "telefone", label: "Telefone", placeholder: "(00) 00000-0000",
+    format: formatarTelefone, validate: validarTelefone },
+  { name: "email", label: "E-mail", validate: validarEmail },
   { name: "status", label: "Status", type: "select", required: true,
     options: [{ label: "Ativo", value: "ativo" }, { label: "Inativo", value: "inativo" }] },
   { name: "foto_url", label: "Foto", type: "file", bucket: "motoristas" },
@@ -67,9 +74,10 @@ export default function Motoristas() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <CardGridSkeleton count={8} />
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum motorista encontrado.</CardContent></Card>
+        <EmptyState icon={Users} title="Nenhum motorista encontrado"
+          description={busca ? "Ajuste a busca para ver mais resultados." : "Cadastre o primeiro motorista da equipe."} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map(m => {
