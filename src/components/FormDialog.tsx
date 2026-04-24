@@ -5,15 +5,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
+import { uploadFile, type Bucket } from "@/lib/storage";
+import { useToast } from "@/hooks/use-toast";
 
 export interface FieldDef {
   name: string;
   label: string;
-  type?: "text" | "number" | "date" | "datetime-local" | "select" | "textarea" | "checkbox";
+  type?: "text" | "number" | "date" | "datetime-local" | "select" | "textarea" | "checkbox" | "file";
   required?: boolean;
   options?: { label: string; value: string }[];
   step?: string;
+  bucket?: Bucket;
 }
 
 interface Props<T extends Record<string, any>> {
@@ -36,8 +39,24 @@ export function FormDialog<T extends Record<string, any>>({
   const setOpen = (v: boolean) => { isControlled ? onOpenChange?.(v) : setInternal(v); };
   const [values, setValues] = useState<Record<string, any>>({ ...initial });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const change = (name: string, v: any) => setValues(s => ({ ...s, [name]: v }));
+
+  const handleFile = async (field: FieldDef, file: File | null) => {
+    if (!file || !field.bucket) return;
+    setUploading(field.name);
+    try {
+      const url = await uploadFile(field.bucket, file);
+      change(field.name, url);
+      toast({ title: "Foto enviada" });
+    } catch (e: any) {
+      toast({ title: "Erro no upload", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +76,9 @@ export function FormDialog<T extends Record<string, any>>({
         <form onSubmit={handleSubmit} className="space-y-3">
           {fields.map(f => (
             <div key={f.name} className="space-y-1.5">
-              <Label htmlFor={f.name}>{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
+              {f.type !== "checkbox" && (
+                <Label htmlFor={f.name}>{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
+              )}
               {f.type === "select" ? (
                 <Select value={values[f.name] ?? ""} onValueChange={(v) => change(f.name, v)}>
                   <SelectTrigger id={f.name}><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -68,7 +89,23 @@ export function FormDialog<T extends Record<string, any>>({
               ) : f.type === "checkbox" ? (
                 <div className="flex items-center gap-2">
                   <input type="checkbox" id={f.name} checked={!!values[f.name]} onChange={(e) => change(f.name, e.target.checked)} className="h-4 w-4 rounded border-border" />
-                  <span className="text-sm text-muted-foreground">{f.label}</span>
+                  <Label htmlFor={f.name} className="text-sm text-muted-foreground">{f.label}</Label>
+                </div>
+              ) : f.type === "file" ? (
+                <div className="space-y-2">
+                  {values[f.name] && (
+                    <img src={values[f.name]} alt="preview" className="h-24 w-24 rounded-md border border-border object-cover" />
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id={f.name}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFile(f, e.target.files?.[0] ?? null)}
+                      disabled={uploading === f.name}
+                    />
+                    {uploading === f.name && <Upload className="h-4 w-4 animate-pulse text-primary" />}
+                  </div>
                 </div>
               ) : (
                 <Input id={f.name} type={f.type ?? "text"} step={f.step} required={f.required}
@@ -78,7 +115,7 @@ export function FormDialog<T extends Record<string, any>>({
           ))}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving} className="bg-gradient-brand text-primary-foreground">{saving ? "Salvando..." : submitLabel}</Button>
+            <Button type="submit" disabled={saving || !!uploading} className="bg-gradient-brand text-primary-foreground">{saving ? "Salvando..." : submitLabel}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
