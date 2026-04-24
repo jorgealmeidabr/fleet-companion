@@ -9,6 +9,7 @@ interface AuthCtx {
   role: AppRole | null;
   loading: boolean;
   isAdmin: boolean;
+  isMotorista: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -31,8 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (s?.user) {
         setTimeout(async () => {
           const { data } = await supabase.from("user_roles").select("role").eq("user_id", s.user.id);
-          const roles = (data ?? []).map((r: any) => r.role as AppRole);
-          setRole(roles.includes("admin") ? "admin" : roles.includes("usuario") ? "usuario" : null);
+          const roles = ((data ?? []) as Array<{ role: string }>).map(r => r.role);
+          // Aceita tanto o novo enum 'motorista' quanto o legado 'usuario'
+          if (roles.includes("admin")) setRole("admin");
+          else if (roles.includes("motorista") || roles.includes("usuario")) setRole("motorista");
+          else setRole(null);
         }, 0);
       } else setRole(null);
     });
@@ -60,7 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => { await supabase.auth.signOut(); };
 
   return (
-    <Ctx.Provider value={{ user, session, role, loading, isAdmin: role === "admin", signIn, signUp, signOut }}>
+    <Ctx.Provider value={{
+      user, session, role, loading,
+      isAdmin: role === "admin",
+      isMotorista: role === "motorista",
+      signIn, signUp, signOut,
+    }}>
       {children}
     </Ctx.Provider>
   );
