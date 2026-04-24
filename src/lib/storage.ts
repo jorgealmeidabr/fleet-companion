@@ -14,3 +14,9 @@ export async function uploadFile(bucket: Bucket, file: File): Promise<string> {
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }
+
+export async function uploadFiles(bucket: Bucket, files: File[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const f of files) urls.push(await uploadFile(bucket, f));
+  return urls;
+}
