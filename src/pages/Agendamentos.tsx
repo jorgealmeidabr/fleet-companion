@@ -75,7 +75,7 @@ export default function Agendamentos() {
   const motoristaMap = useMemo(() => Object.fromEntries(motoristas.map(m => [m.id, m])), [motoristas]);
   const colorByVeiculo = useMemo(() => {
     const m: Record<string, string> = {};
-    veiculos.forEach((v, i) => { m[v.id] = colorFor(v.id, i); });
+    veiculos.forEach((v, i) => { m[v.id] = colorFor(i); });
     return m;
   }, [veiculos]);
 
