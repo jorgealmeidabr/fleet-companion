@@ -1,19 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { DataTable } from "@/components/DataTable";
 import { FormDialog, FieldDef } from "@/components/FormDialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { fmtBRL, fmtDate, fmtNumber } from "@/lib/format";
 import type { Manutencao, Veiculo } from "@/lib/types";
+import { Plus, Wrench, ShieldCheck, AlertTriangle, MoreVertical, Pencil, Trash2 } from "lucide-react";
 
 export default function Manutencoes() {
   const { rows, loading, insert, update, remove } = useTable<Manutencao>("manutencoes");
   const { isAdmin } = useAuth();
   const [editing, setEditing] = useState<Manutencao | null>(null);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
+  const [fTipo, setFTipo] = useState("todos");
+  const [fStatus, setFStatus] = useState("todos");
+  const [fVeic, setFVeic] = useState("todos");
+  const [fDe, setFDe] = useState("");
+  const [fAte, setFAte] = useState("");
 
   useEffect(() => { supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[])); }, []);
 
@@ -34,27 +46,146 @@ export default function Manutencoes() {
       options: [{ label: "Agendada", value: "agendada" }, { label: "Em andamento", value: "em_andamento" }, { label: "Concluída", value: "concluida" }] },
   ], [veiculos]);
 
-  const veicLabel = (id: string) => { const v = veiculos.find(x => x.id === id); return v ? v.placa : "—"; };
+  const veicMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
+
+  const filtered = useMemo(() => {
+    return rows.filter(m => {
+      if (fTipo !== "todos" && m.tipo !== fTipo) return false;
+      if (fStatus !== "todos" && m.status !== fStatus) return false;
+      if (fVeic !== "todos" && m.veiculo_id !== fVeic) return false;
+      if (fDe && m.data < fDe) return false;
+      if (fAte && m.data > fAte) return false;
+      return true;
+    });
+  }, [rows, fTipo, fStatus, fVeic, fDe, fAte]);
+
+  const totalCusto = useMemo(() => filtered.reduce((s, m) => s + Number(m.custo_total ?? 0), 0), [filtered]);
+
+  const isVencida = (m: Manutencao): boolean => {
+    if (m.status === "concluida") return false;
+    const v = veicMap[m.veiculo_id];
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (m.proxima_data && hoje > m.proxima_data) return true;
+    if (m.proxima_km && v && v.km_atual > m.proxima_km) return true;
+    return false;
+  };
 
   return (
     <>
-      <PageHeader title="Manutenções" subtitle="Histórico, custos e próximas revisões"
-        actions={isAdmin && <FormDialog<Manutencao> title="Nova manutenção" fields={fields} onSubmit={insert} />} />
-      <DataTable<Manutencao>
-        rows={rows} loading={loading}
-        columns={[
-          { header: "Veículo", cell: r => <span className="font-mono">{veicLabel(r.veiculo_id)}</span> },
-          { header: "Tipo", cell: r => <span className="capitalize">{r.tipo}</span> },
-          { header: "Data", cell: r => fmtDate(r.data) },
-          { header: "Km", cell: r => fmtNumber(r.km_momento) },
-          { header: "Custo", cell: r => fmtBRL(Number(r.custo_total)) },
-          { header: "Próx. revisão", cell: r => `${r.proxima_km ? fmtNumber(r.proxima_km) + " km" : "—"} / ${fmtDate(r.proxima_data)}` },
-          { header: "Status", cell: r => <StatusBadge status={r.status} /> },
-        ]}
-        onEdit={setEditing} onDelete={(r) => remove(r.id)}
+      <PageHeader
+        title="Manutenções"
+        subtitle="Histórico, custos e próximas revisões"
+        actions={isAdmin && (
+          <FormDialog<Manutencao>
+            title="Nova manutenção" fields={fields} onSubmit={insert}
+            trigger={<Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Nova manutenção</Button>}
+          />
+        )}
       />
-      {editing && <FormDialog<Manutencao> title="Editar manutenção" fields={fields} initial={editing} open
-        onOpenChange={(o) => !o && setEditing(null)} onSubmit={(v) => update(editing.id, v)} />}
+
+      <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-3 lg:grid-cols-6">
+        <Select value={fTipo} onValueChange={setFTipo}>
+          <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos tipos</SelectItem>
+            <SelectItem value="preventiva">Preventiva</SelectItem>
+            <SelectItem value="corretiva">Corretiva</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={fStatus} onValueChange={setFStatus}>
+          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos status</SelectItem>
+            <SelectItem value="agendada">Agendada</SelectItem>
+            <SelectItem value="em_andamento">Em andamento</SelectItem>
+            <SelectItem value="concluida">Concluída</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={fVeic} onValueChange={setFVeic}>
+          <SelectTrigger><SelectValue placeholder="Veículo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos veículos</SelectItem>
+            {veiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa} – {v.modelo}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} placeholder="De" />
+        <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} placeholder="Até" />
+        <Card className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-brand text-primary-foreground">
+          <div className="text-xs opacity-80">Custo total</div>
+          <div className="text-base font-bold">{fmtBRL(totalCusto)}</div>
+        </Card>
+      </div>
+
+      {loading ? (
+        <p className="text-muted-foreground">Carregando...</p>
+      ) : filtered.length === 0 ? (
+        <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhuma manutenção encontrada.</CardContent></Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map(m => {
+            const v = veicMap[m.veiculo_id];
+            const vencida = isVencida(m);
+            return (
+              <Card key={m.id} className={vencida ? "border-destructive/50 shadow-[0_0_0_1px_hsl(var(--destructive)/0.3)]" : ""}>
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-md ${m.tipo === "preventiva" ? "bg-info/15 text-info" : "bg-warning/15 text-warning"}`}>
+                        {m.tipo === "preventiva" ? <ShieldCheck className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
+                      </div>
+                      <div>
+                        <p className="font-mono text-sm font-bold">{v?.placa ?? "—"}</p>
+                        <p className="text-xs text-muted-foreground">{v?.marca} {v?.modelo}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <StatusBadge status={m.status} />
+                      {isAdmin && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditing(m)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => remove(m.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Excluir</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><p className="text-xs text-muted-foreground">Data</p><p className="font-medium">{fmtDate(m.data)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Custo</p><p className="font-semibold">{fmtBRL(Number(m.custo_total))}</p></div>
+                    <div className="col-span-2"><p className="text-xs text-muted-foreground">Oficina</p><p className="font-medium">{m.oficina ?? "—"}</p></div>
+                    {m.descricao && <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="line-clamp-2 text-muted-foreground">{m.descricao}</p></div>}
+                  </div>
+
+                  {(m.proxima_km || m.proxima_data) && (
+                    <div className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
+                      Próxima: {m.proxima_km ? `${fmtNumber(m.proxima_km)} km` : "—"} {m.proxima_data && `· ${fmtDate(m.proxima_data)}`}
+                    </div>
+                  )}
+
+                  {vencida && (
+                    <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+                      <AlertTriangle className="h-3.5 w-3.5" />Manutenção vencida
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {editing && (
+        <FormDialog<Manutencao>
+          title="Editar manutenção" fields={fields} initial={editing} open
+          onOpenChange={(o) => !o && setEditing(null)}
+          onSubmit={(v) => update(editing.id, v)}
+        />
+      )}
     </>
   );
 }
