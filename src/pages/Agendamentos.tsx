@@ -28,10 +28,9 @@ const PALETTE = [
   "hsl(262 83% 58%)", "hsl(173 80% 40%)", "hsl(24 95% 53%)",
   "hsl(330 81% 60%)", "hsl(199 89% 48%)",
 ];
-const colorFor = (id: string, idx: number) => PALETTE[idx % PALETTE.length];
+const colorFor = (idx: number) => PALETTE[idx % PALETTE.length];
 
-const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
 
 const inRange = (day: Date, start: string, end: string | null) => {
   const s = new Date(start);
