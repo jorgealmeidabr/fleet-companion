@@ -151,9 +151,18 @@ export default function Veiculos() {
                         <DropdownMenuItem onClick={() => navigate(`/veiculos/${v.id}`)}>
                           <Eye className="mr-2 h-4 w-4" />Ver histórico
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => update(v.id, { status: "inativo" })}>
-                          <PowerOff className="mr-2 h-4 w-4" />Inativar
-                        </DropdownMenuItem>
+                        <ConfirmDialog
+                          title="Inativar veículo"
+                          description={`Confirma inativar o veículo ${v.placa}? Ele deixará de aparecer como disponível.`}
+                          confirmLabel="Inativar"
+                          destructive
+                          onConfirm={() => update(v.id, { status: "inativo" })}
+                          trigger={
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <PowerOff className="mr-2 h-4 w-4" />Inativar
+                            </DropdownMenuItem>
+                          }
+                        />
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
