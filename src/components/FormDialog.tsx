@@ -17,6 +17,11 @@ export interface FieldDef {
   options?: { label: string; value: string }[];
   step?: string;
   bucket?: Bucket;
+  /** Valida o valor; retorne mensagem de erro ou null. */
+  validate?: (v: any) => string | null;
+  /** Formata o valor enquanto digita (ex: placa, telefone). */
+  format?: (v: string) => string;
+  placeholder?: string;
 }
 
 interface Props<T extends Record<string, any>> {
