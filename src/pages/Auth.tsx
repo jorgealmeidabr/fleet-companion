@@ -81,7 +81,7 @@ export default function Auth() {
             <Truck className="h-6 w-6" />
           </div>
           <div className="text-left">
-            <h1 className="text-xl font-bold">FleetManager</h1>
+            <h1 className="text-xl font-bold">BRQ - FROTA INTERNA</h1>
             <p className="text-xs text-white/60">Gestão de frota corporativa BRQ</p>
           </div>
         </div>
