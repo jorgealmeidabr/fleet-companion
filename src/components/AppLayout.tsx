@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Car, Users, Wrench, Fuel, CalendarRange, ClipboardCheck, AlertTriangle, History, LogOut, Moon, Sun, Truck, Bell } from "lucide-react";
+import { LayoutDashboard, Car, Users, Wrench, Fuel, CalendarRange, ClipboardCheck, AlertTriangle, History, LogOut, Moon, Sun, Truck, Bell, ShieldCheck, UserCircle2 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
@@ -10,38 +10,41 @@ import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlerts } from "@/hooks/useAlerts";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { cn } from "@/lib/utils";
+import type { ModuloPermissao } from "@/lib/types";
 
 interface NavItem {
   title: string;
   url: string;
   icon: any;
-  adminOnly?: boolean;
-  motoristaOnly?: boolean;
+  perm?: ModuloPermissao;
 }
 
 const items: NavItem[] = [
-  { title: "Dashboard",     url: "/",              icon: LayoutDashboard, adminOnly: true },
-  { title: "Veículos",      url: "/veiculos",      icon: Car,             adminOnly: true },
-  { title: "Motoristas",    url: "/motoristas",    icon: Users,           adminOnly: true },
-  { title: "Manutenção",    url: "/manutencoes",   icon: Wrench,          adminOnly: true },
-  { title: "Abastecimento", url: "/abastecimentos", icon: Fuel,           adminOnly: true },
-  { title: "Agendamentos",  url: "/agendamentos",  icon: CalendarRange },
-  { title: "Checklists",    url: "/checklists",    icon: ClipboardCheck },
-  { title: "Multas",        url: "/multas",        icon: AlertTriangle,   adminOnly: true },
-  { title: "Histórico",     url: "/historico",     icon: History,         adminOnly: true },
-  { title: "Alertas",       url: "/alertas",       icon: Bell,            adminOnly: true },
+  { title: "Dashboard",     url: "/",              icon: LayoutDashboard, perm: "dashboard" },
+  { title: "Veículos",      url: "/veiculos",      icon: Car,             perm: "veiculos" },
+  { title: "Pessoas",       url: "/motoristas",    icon: Users,           perm: "motoristas" },
+  { title: "Manutenção",    url: "/manutencoes",   icon: Wrench,          perm: "manutencao" },
+  { title: "Abastecimento", url: "/abastecimentos", icon: Fuel,           perm: "abastecimento" },
+  { title: "Agendamentos",  url: "/agendamentos",  icon: CalendarRange,   perm: "agendamentos" },
+  { title: "Checklists",    url: "/checklists",    icon: ClipboardCheck,  perm: "checklists" },
+  { title: "Multas",        url: "/multas",        icon: AlertTriangle,   perm: "multas" },
+  { title: "Histórico",     url: "/historico",     icon: History,         perm: "historico" },
+  { title: "Alertas",       url: "/alertas",       icon: Bell,            perm: "alertas" },
+  { title: "Usuários",      url: "/usuarios",      icon: ShieldCheck,     perm: "usuarios" },
 ];
 
 function AppSidebar({ alertCount }: { alertCount: number }) {
   const { state } = useSidebar();
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { canSee } = usePermissions();
   const collapsed = state === "collapsed";
 
-  const visible = items.filter(i => isAdmin || !i.adminOnly);
+  // CRÍTICO: itens sem acesso NÃO existem no DOM
+  const visible = items.filter(i => !i.perm || canSee(i.perm));
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -88,6 +91,22 @@ function AppSidebar({ alertCount }: { alertCount: number }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Conta</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location.pathname === "/meu-perfil"}>
+                  <NavLink to="/meu-perfil">
+                    <UserCircle2 className="h-4 w-4" />
+                    {!collapsed && <span>Meu perfil</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         {!collapsed && (
@@ -102,7 +121,8 @@ function AppSidebar({ alertCount }: { alertCount: number }) {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggle } = useTheme();
-  const { user, role, isAdmin, signOut } = useAuth();
+  const { user, signOut, tipoConta } = useAuth();
+  const { isAdmin } = usePermissions();
   const { counts } = useAlerts();
   const alertCount = isAdmin ? counts.critico + counts.atencao : 0;
 
@@ -113,13 +133,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
             <SidebarTrigger />
-            <div className="ml-2 hidden text-sm font-medium text-muted-foreground md:block">
-            </div>
+            <div className="ml-2 hidden text-sm font-medium text-muted-foreground md:block" />
             <div className="ml-auto flex items-center gap-2">
               <GlobalSearch />
-              {role && (
-                <Badge variant={role === "admin" ? "default" : "secondary"} className={role === "admin" ? "bg-gradient-brand text-primary-foreground" : ""}>
-                  {role}
+              {tipoConta && (
+                <Badge variant={tipoConta === "admin" ? "default" : "secondary"} className={tipoConta === "admin" ? "bg-gradient-brand text-primary-foreground" : ""}>
+                  {tipoConta === "admin" ? "Admin" : "Usuário"}
                 </Badge>
               )}
               <span className="hidden text-xs text-muted-foreground md:inline">{user?.email}</span>
