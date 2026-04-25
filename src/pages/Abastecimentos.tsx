@@ -4,13 +4,15 @@ import { DataTable } from "@/components/DataTable";
 import { FormDialog, FieldDef } from "@/components/FormDialog";
 import { KpiCard } from "@/components/KpiCard";
 import { useTable } from "@/hooks/useTable";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/lib/supabase";
-import { fmtBRL, fmtDate, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtNumber } from "@/lib/format";
 import type { Abastecimento, Veiculo, Motorista } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Droplet, DollarSign, Gauge, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { downloadCSV } from "@/lib/csv";
+import { Money } from "@/components/Money";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
@@ -20,6 +22,7 @@ const PALETTE = ["hsl(var(--primary))", "hsl(var(--info))", "hsl(var(--success))
 
 export default function Abastecimentos() {
   const { rows, loading, insert, update, remove, reload } = useTable<Abastecimento>("abastecimentos");
+  const { canSeeFinancial } = usePermissions();
   const [editing, setEditing] = useState<Abastecimento | null>(null);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
@@ -127,7 +130,7 @@ export default function Abastecimentos() {
       <PageHeader title="Abastecimentos" subtitle="Consumo médio e custo por km calculados automaticamente"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" disabled={rows.length === 0}
+            <Button variant="outline" size="sm" disabled={rows.length === 0 || !canSeeFinancial()} title={!canSeeFinancial() ? "Sem permissão para exportar valores" : ""}
               onClick={() => downloadCSV(
                 `abastecimentos_${new Date().toISOString().slice(0,10)}.csv`,
                 ["Veículo", "Data", "Km", "Litros", "Valor", "Posto", "Consumo (km/L)", "Custo/km"],
@@ -145,7 +148,9 @@ export default function Abastecimentos() {
 
       <div className="grid gap-4 md:grid-cols-3 mb-4">
         <KpiCard label="Litros no mês" value={fmtNumber(monthKpis.litros, { maximumFractionDigits: 1 })} icon={Droplet} tone="info" />
-        <KpiCard label="Gasto no mês" value={fmtBRL(monthKpis.gasto)} icon={DollarSign} tone="brand" />
+        <KpiCard label="Gasto no mês" value={canSeeFinancial() ? undefined : "••••"} icon={DollarSign} tone="brand">
+          {canSeeFinancial() && <Money value={monthKpis.gasto} className="text-2xl font-bold" />}
+        </KpiCard>
         <KpiCard label="Consumo médio frota" value={`${fmtNumber(monthKpis.consumoMedio, { maximumFractionDigits: 2 })} km/l`} icon={Gauge} tone="success" />
       </div>
 
@@ -187,14 +192,14 @@ export default function Abastecimentos() {
           { header: "Motorista", cell: r => mLabel(r.motorista_id) },
           { header: "Km", cell: r => fmtNumber(r.km_atual) },
           { header: "Litros", cell: r => fmtNumber(Number(r.litros), { maximumFractionDigits: 2 }) },
-          { header: "Valor", cell: r => fmtBRL(Number(r.valor_total)) },
+          { header: "Valor", cell: r => <Money value={Number(r.valor_total)} /> },
           { header: "Consumo", cell: r => (
             <span className={anomalies.has(r.id) ? "text-destructive font-semibold inline-flex items-center gap-1" : ""}>
               {anomalies.has(r.id) && <AlertTriangle className="h-3.5 w-3.5" />}
               {r.consumo_km_l ? `${fmtNumber(Number(r.consumo_km_l), { maximumFractionDigits: 2 })} km/l` : "—"}
             </span>
           )},
-          { header: "R$/km", cell: r => r.custo_por_km ? fmtBRL(Number(r.custo_por_km)) : "—" },
+          { header: "R$/km", cell: r => r.custo_por_km ? <Money value={Number(r.custo_por_km)} /> : "—" },
           { header: "Posto", cell: r => r.posto ?? "—" },
         ]}
         onEdit={setEditing} onDelete={(r) => remove(r.id)}
