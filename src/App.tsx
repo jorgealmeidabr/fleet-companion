@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import SetupSenha from "./pages/SetupSenha";
 import Setup from "./pages/Setup";
 import Veiculos from "./pages/Veiculos";
 import VeiculoDetalhe from "./pages/VeiculoDetalhe";
@@ -22,12 +23,15 @@ import Checklists from "./pages/Checklists";
 import Multas from "./pages/Multas";
 import Historico from "./pages/Historico";
 import Alertas from "./pages/Alertas";
+import Usuarios from "./pages/Usuarios";
+import MeuPerfil from "./pages/MeuPerfil";
 import NotFound from "./pages/NotFound";
+import type { ModuloPermissao } from "@/lib/types";
 
 const queryClient = new QueryClient();
 
-const Protected = ({ children, admin }: { children: React.ReactNode; admin?: boolean }) => (
-  <ProtectedRoute requireAdmin={admin}><AppLayout>{children}</AppLayout></ProtectedRoute>
+const Protected = ({ children, perm, admin }: { children: React.ReactNode; perm?: ModuloPermissao; admin?: boolean }) => (
+  <ProtectedRoute requirePerm={perm} requireAdmin={admin}><AppLayout>{children}</AppLayout></ProtectedRoute>
 );
 
 const App = () => (
@@ -41,18 +45,23 @@ const App = () => (
             <Route path="/setup" element={<Setup />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/" element={<Protected admin><Index /></Protected>} />
-            <Route path="/veiculos" element={<Protected admin><Veiculos /></Protected>} />
-            <Route path="/veiculos/:id" element={<Protected admin><VeiculoDetalhe /></Protected>} />
-            <Route path="/motoristas" element={<Protected admin><Motoristas /></Protected>} />
-            <Route path="/motoristas/:id" element={<Protected admin><MotoristaDetalhe /></Protected>} />
-            <Route path="/manutencoes" element={<Protected admin><Manutencoes /></Protected>} />
-            <Route path="/abastecimentos" element={<Protected admin><Abastecimentos /></Protected>} />
-            <Route path="/agendamentos" element={<Protected><Agendamentos /></Protected>} />
-            <Route path="/checklists" element={<Protected><Checklists /></Protected>} />
-            <Route path="/multas" element={<Protected admin><Multas /></Protected>} />
-            <Route path="/historico" element={<Protected admin><Historico /></Protected>} />
-            <Route path="/alertas" element={<Protected admin><Alertas /></Protected>} />
+            <Route path="/setup-senha" element={<ProtectedRoute><SetupSenha /></ProtectedRoute>} />
+
+            <Route path="/" element={<Protected perm="dashboard"><Index /></Protected>} />
+            <Route path="/veiculos" element={<Protected perm="veiculos"><Veiculos /></Protected>} />
+            <Route path="/veiculos/:id" element={<Protected perm="veiculos"><VeiculoDetalhe /></Protected>} />
+            <Route path="/motoristas" element={<Protected perm="motoristas"><Motoristas /></Protected>} />
+            <Route path="/motoristas/:id" element={<Protected perm="motoristas"><MotoristaDetalhe /></Protected>} />
+            <Route path="/manutencoes" element={<Protected perm="manutencao"><Manutencoes /></Protected>} />
+            <Route path="/abastecimentos" element={<Protected perm="abastecimento"><Abastecimentos /></Protected>} />
+            <Route path="/agendamentos" element={<Protected perm="agendamentos"><Agendamentos /></Protected>} />
+            <Route path="/checklists" element={<Protected perm="checklists"><Checklists /></Protected>} />
+            <Route path="/multas" element={<Protected perm="multas"><Multas /></Protected>} />
+            <Route path="/historico" element={<Protected perm="historico"><Historico /></Protected>} />
+            <Route path="/alertas" element={<Protected perm="alertas"><Alertas /></Protected>} />
+            <Route path="/usuarios" element={<Protected admin><Usuarios /></Protected>} />
+            <Route path="/meu-perfil" element={<ProtectedRoute><AppLayout><MeuPerfil /></AppLayout></ProtectedRoute>} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
