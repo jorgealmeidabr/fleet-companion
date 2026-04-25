@@ -11,18 +11,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/lib/supabase";
-import { fmtBRL, fmtDate, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtNumber } from "@/lib/format";
 import type { Manutencao, Veiculo } from "@/lib/types";
 import { Plus, Wrench, ShieldCheck, AlertTriangle, MoreVertical, Pencil, Trash2, Download } from "lucide-react";
 import { downloadCSV } from "@/lib/csv";
 import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Money } from "@/components/Money";
 
 export default function Manutencoes() {
   const { rows, loading, insert, update, remove } = useTable<Manutencao>("manutencoes");
   const { isAdmin } = useAuth();
+  const { canSeeFinancial } = usePermissions();
   const [editing, setEditing] = useState<Manutencao | null>(null);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [fTipo, setFTipo] = useState("todos");
@@ -81,7 +84,7 @@ export default function Manutencoes() {
         subtitle="Histórico, custos e próximas revisões"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" disabled={filtered.length === 0}
+            <Button variant="outline" size="sm" disabled={filtered.length === 0 || !canSeeFinancial()} title={!canSeeFinancial() ? "Sem permissão para exportar valores" : ""}
               onClick={() => downloadCSV(
                 `manutencoes_${new Date().toISOString().slice(0,10)}.csv`,
                 ["Veículo", "Tipo", "Data", "Km", "Descrição", "Oficina", "Custo", "Status"],
@@ -131,7 +134,7 @@ export default function Manutencoes() {
         <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} placeholder="Até" />
         <Card className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-brand text-primary-foreground">
           <div className="text-xs opacity-80">Custo total</div>
-          <div className="text-base font-bold">{fmtBRL(totalCusto)}</div>
+          <div className="text-base font-bold"><Money value={totalCusto} className="text-primary-foreground" /></div>
         </Card>
       </div>
 
@@ -187,7 +190,7 @@ export default function Manutencoes() {
 
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div><p className="text-xs text-muted-foreground">Data</p><p className="font-medium">{fmtDate(m.data)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Custo</p><p className="font-semibold">{fmtBRL(Number(m.custo_total))}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Custo</p><p className="font-semibold"><Money value={Number(m.custo_total)} /></p></div>
                     <div className="col-span-2"><p className="text-xs text-muted-foreground">Oficina</p><p className="font-medium">{m.oficina ?? "—"}</p></div>
                     {m.descricao && <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="line-clamp-2 text-muted-foreground">{m.descricao}</p></div>}
                   </div>
