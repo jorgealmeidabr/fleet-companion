@@ -148,9 +148,7 @@ export default function Abastecimentos() {
 
       <div className="grid gap-4 md:grid-cols-3 mb-4">
         <KpiCard label="Litros no mês" value={fmtNumber(monthKpis.litros, { maximumFractionDigits: 1 })} icon={Droplet} tone="info" />
-        <KpiCard label="Gasto no mês" value={canSeeFinancial() ? undefined : "••••"} icon={DollarSign} tone="brand">
-          {canSeeFinancial() && <Money value={monthKpis.gasto} className="text-2xl font-bold" />}
-        </KpiCard>
+        <KpiCard label="Gasto no mês" value={canSeeFinancial() ? (monthKpis.gasto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })) : "🔒 ••••"} icon={DollarSign} tone="brand" />
         <KpiCard label="Consumo médio frota" value={`${fmtNumber(monthKpis.consumoMedio, { maximumFractionDigits: 2 })} km/l`} icon={Gauge} tone="success" />
       </div>
 
