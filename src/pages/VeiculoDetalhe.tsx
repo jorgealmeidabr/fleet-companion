@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtBRL, fmtDate, fmtNumber } from "@/lib/format";
+import { Money } from "@/components/Money";
 import type { Abastecimento, Checklist, Manutencao, Veiculo } from "@/lib/types";
 import { ArrowLeft, Car, Fuel, Wrench, ClipboardCheck, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -89,8 +90,8 @@ export default function VeiculoDetalhe() {
         </Card>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-1 xl:grid-cols-3">
-          <KpiMini icon={<Wrench />} label="Custo manutenções" value={fmtBRL(totais.custoManut)} />
-          <KpiMini icon={<Fuel />} label="Custo abastecimentos" value={fmtBRL(totais.custoAbast)} />
+          <KpiMini icon={<Wrench />} label="Custo manutenções" value={<Money value={totais.custoManut} />} />
+          <KpiMini icon={<Fuel />} label="Custo abastecimentos" value={<Money value={totais.custoAbast} />} />
           <KpiMini icon={<TrendingUp />} label="Litros abastecidos" value={`${fmtNumber(totais.litros, { maximumFractionDigits: 1 })} L`} />
           <Card className="sm:col-span-3 lg:col-span-1 xl:col-span-3">
             <CardHeader className="pb-2"><CardTitle className="text-base">Consumo (km/L) ao longo do tempo</CardTitle></CardHeader>
@@ -127,7 +128,7 @@ export default function VeiculoDetalhe() {
               id: m.id,
               left: <span className="capitalize">{m.tipo}</span>,
               middle: m.descricao ?? m.oficina ?? "—",
-              right: <>{fmtBRL(Number(m.custo_total))} · <StatusBadge status={m.status} /></>,
+              right: <><Money value={Number(m.custo_total)} /> · <StatusBadge status={m.status} /></>,
               date: fmtDate(m.data),
             }))}
           />
@@ -140,7 +141,7 @@ export default function VeiculoDetalhe() {
               id: a.id,
               left: `${fmtNumber(a.litros, { maximumFractionDigits: 1 })} L`,
               middle: a.posto ?? "—",
-              right: <>{fmtBRL(Number(a.valor_total))} {a.consumo_km_l && <span className="ml-2 text-xs text-muted-foreground">{Number(a.consumo_km_l).toFixed(1)} km/L</span>}</>,
+              right: <><Money value={Number(a.valor_total)} /> {a.consumo_km_l && <span className="ml-2 text-xs text-muted-foreground">{Number(a.consumo_km_l).toFixed(1)} km/L</span>}</>,
               date: fmtDate(a.data),
             }))}
           />
@@ -168,7 +169,7 @@ export default function VeiculoDetalhe() {
   );
 }
 
-function KpiMini({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function KpiMini({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">

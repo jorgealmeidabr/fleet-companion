@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/KpiCard";
 import { PageHeader } from "@/components/PageHeader";
 import { fmtBRL, fmtNumber } from "@/lib/format";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Car, Wrench, AlertTriangle, Fuel, Gauge, Bell } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -14,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { differenceInDays, parseISO, format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
 export default function Dashboard() {
+  const { canSeeFinancial } = usePermissions();
+  const money = (n: number) => canSeeFinancial() ? fmtBRL(n) : "🔒 ••••";
   const [loading, setLoading] = useState(true);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
@@ -91,7 +94,7 @@ export default function Dashboard() {
     else if (dias <= 30) alertas.push({ tipo: "CNH", msg: `${m.nome} – CNH vence em ${dias}d`, nivel: "warning" });
   });
   multas.filter(m => m.status_pagamento === "pendente").forEach(m => {
-    alertas.push({ tipo: "Multa", msg: `${m.tipo_infracao} – ${fmtBRL(Number(m.valor))}`, nivel: "warning" });
+    alertas.push({ tipo: "Multa", msg: `${m.tipo_infracao} – ${money(Number(m.valor))}`, nivel: "warning" });
   });
 
   // Gráficos: barras 6 meses
@@ -130,8 +133,8 @@ export default function Dashboard() {
         <KpiCard label="Em manutenção" value={emManutencao} icon={Wrench} tone="warning" />
         <KpiCard label="Inativos" value={inativos} icon={AlertTriangle} tone="destructive" />
         <KpiCard label="Alertas ativos" value={alertas.length} icon={Bell} tone={alertas.length ? "destructive" : "success"} />
-        <KpiCard label="Combustível (mês)" value={fmtBRL(gastoCombMes)} icon={Fuel} tone="brand" trend={{ value: varComb, label: "vs mês ant." }} />
-        <KpiCard label="Manutenção (mês)" value={fmtBRL(gastoManutMes)} icon={Wrench} tone="info" trend={{ value: varManut, label: "vs mês ant." }} />
+        <KpiCard label="Combustível (mês)" value={money(gastoCombMes)} icon={Fuel} tone="brand" trend={canSeeFinancial() ? { value: varComb, label: "vs mês ant." } : undefined} />
+        <KpiCard label="Manutenção (mês)" value={money(gastoManutMes)} icon={Wrench} tone="info" trend={canSeeFinancial() ? { value: varManut, label: "vs mês ant." } : undefined} />
         <KpiCard label="Consumo médio" value={`${fmtNumber(consumoMedio, { maximumFractionDigits: 2 })} km/l`} icon={Gauge} />
         <KpiCard label="Veículos cadastrados" value={veiculos.length} icon={Car} />
       </div>
@@ -145,7 +148,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                 <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: any) => fmtBRL(Number(v))} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: any) => money(Number(v))} />
                 <Legend />
                 <Bar dataKey="Combustivel" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="Manutencao" fill="hsl(var(--info))" radius={[6, 6, 0, 0]} />
@@ -196,7 +199,7 @@ export default function Dashboard() {
                     <p className="truncate text-sm font-semibold">{v.placa} – {v.marca} {v.modelo}</p>
                     <p className="text-xs text-muted-foreground">{v.km_atual.toLocaleString("pt-BR")} km</p>
                   </div>
-                  <p className="text-sm font-bold">{fmtBRL(v.custo)}</p>
+                  <p className="text-sm font-bold">{money(v.custo)}</p>
                 </div>
               ))}
             </div>
