@@ -375,24 +375,31 @@ function UserWizard({
         }).eq("id", editing.id);
         toast({ title: "Usuário atualizado" });
       } else {
-        // signUp com senha temporária
-        const { data: signed, error: sErr } = await supabase.auth.signUp({
-          email, password: senha,
-          options: { data: { nome }, emailRedirectTo: `${window.location.origin}/setup-senha` },
-        });
-        if (sErr) throw sErr;
-        userId = signed.user!.id;
-
-        // Vincula motorista ao user_id
-        await (supabase as any).from("motoristas").update({ user_id: userId }).eq("id", motoristaId);
-
         const finalPerms = tipoConta === "admin" ? PERMISSOES_TUDO : perms;
-        const { error: pErr } = await (supabase as any).from("usuarios_perfis").insert({
-          user_id: userId, motorista_id: motoristaId,
-          tipo_conta: tipoConta, permissoes: finalPerms, ativo: true,
-          must_change_password: true,
-        });
-        if (pErr) throw pErr;
+        const linkId = linkExisting && existingMot ? existingMot.id : null;
+
+        const { data: fnData, error: fnErr } = await supabase.functions.invoke(
+          "admin-create-user",
+          {
+            body: {
+              email,
+              senha,
+              nome,
+              telefone: telefone || null,
+              cargo,
+              cnh_numero: cnhNum || null,
+              cnh_categoria: cnhCat || null,
+              cnh_validade: cnhVal || null,
+              tipo_conta: tipoConta,
+              permissoes: finalPerms,
+              link_motorista_id: linkId,
+            },
+          },
+        );
+
+        if (fnErr) throw new Error(fnErr.message);
+        if (fnData && (fnData as any).error) throw new Error((fnData as any).error);
+
         toast({
           title: "Usuário criado",
           description: `Senha temporária: ${senha} — copie e envie ao usuário.`,
