@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -319,10 +319,16 @@ function UserWizard({
   };
 
   const next = () => {
-    const err = passo1Valido();
-    if (err) return toast({ title: err, variant: "destructive" });
-    if (tipoConta === "admin") setStep(3);
-    else setStep(2);
+    if (step === 1) {
+      const err = passo1Valido();
+      if (err) return toast({ title: err, variant: "destructive" });
+      setStep(tipoConta === "admin" ? 3 : 2);
+      return;
+    }
+    if (step === 2) {
+      setStep(3);
+      return;
+    }
   };
   const back = () => {
     if (step === 3 && tipoConta === "admin") setStep(1);
@@ -408,6 +414,9 @@ function UserWizard({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{editing ? "Editar usuário" : "Novo usuário"}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Assistente em três etapas: dados pessoais, permissões de acesso e confirmação.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Stepper */}

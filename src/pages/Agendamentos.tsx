@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -373,7 +373,10 @@ export default function Agendamentos() {
       {/* ============== Popup de evento ============== */}
       <Dialog open={!!popupAg} onOpenChange={(o) => !o && setPopupAg(null)}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Detalhes do agendamento</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Detalhes do agendamento</DialogTitle>
+            <DialogDescription className="sr-only">Informações completas da reserva selecionada.</DialogDescription>
+          </DialogHeader>
           {popupAg && (() => {
             const v = veiculoMap[popupAg.veiculo_id];
             const m = motoristaMap[popupAg.motorista_id];
@@ -400,6 +403,7 @@ export default function Agendamentos() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Novo agendamento — {pickedVeiculo?.placa}</DialogTitle>
+            <DialogDescription className="sr-only">Formulário para reservar o veículo selecionado.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -441,7 +445,10 @@ export default function Agendamentos() {
       {/* ============== Modal: devolução ============== */}
       <Dialog open={!!returning} onOpenChange={(o) => { if (!o) { setReturning(null); setRetForm({}); } }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Registrar devolução</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Registrar devolução</DialogTitle>
+            <DialogDescription className="sr-only">Confirme os dados de devolução do veículo.</DialogDescription>
+          </DialogHeader>
           {returning && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">

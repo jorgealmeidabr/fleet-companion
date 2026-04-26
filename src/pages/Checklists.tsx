@@ -8,7 +8,7 @@ import { uploadFiles } from "@/lib/storage";
 import { fmtDate } from "@/lib/format";
 import type { Checklist, Veiculo, Motorista } from "@/lib/types";
 import { Check, X, Upload, Plus, Camera } from "lucide-react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -125,7 +125,10 @@ export default function Checklists() {
               <Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Novo checklist</Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-              <DialogHeader><DialogTitle>Novo checklist de inspeção</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Novo checklist de inspeção</DialogTitle>
+                <DialogDescription className="sr-only">Preencha os itens de inspeção do veículo.</DialogDescription>
+              </DialogHeader>
               <form onSubmit={submit} className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="space-y-1.5">

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Upload } from "lucide-react";
 import { uploadFile, type Bucket } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
@@ -100,7 +100,10 @@ export function FormDialog<T extends Record<string, any>>({
         </DialogTrigger>
       )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">Formulário: {title}</DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           {fields.map(f => (
             <div key={f.name} className="space-y-1.5">
