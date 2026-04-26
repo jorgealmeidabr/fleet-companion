@@ -564,9 +564,21 @@ function UserWizard({
             </div>
 
             {!editing && (
-              <div className="rounded-md border border-info/30 bg-info/10 p-3 text-sm">
-                <Mail className="mr-1 inline h-4 w-4" />
-                O usuário receberá a senha temporária <strong className="font-mono">{senha}</strong> e será obrigado a trocá-la no primeiro acesso.
+              <div className="rounded-lg border-2 border-warning/60 bg-warning/15 p-4">
+                <p className="mb-2 text-sm font-semibold text-warning-foreground">
+                  ⚠️ Senha temporária — anote antes de continuar:
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-md border border-warning/40 bg-background/80 px-4 py-3 text-center font-mono text-2xl font-bold tracking-widest">
+                    {senha}
+                  </code>
+                  <Button type="button" variant="outline" size="icon" onClick={copyPwd} title="Copiar senha">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Esta senha não será exibida novamente. O usuário deverá trocá-la no primeiro acesso.
+                </p>
               </div>
             )}
           </div>
