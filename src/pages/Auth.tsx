@@ -154,7 +154,7 @@ export default function Auth() {
           )}
 
           <p className="mt-8 text-center text-[11px] text-white/30">
-            <Link to="/setup" className="hover:text-white/60">Configurações de conexão</Link>
+            <Link to="/setup" className="hover:text-white/60">​</Link>
           </p>
         </div>
       </div>
