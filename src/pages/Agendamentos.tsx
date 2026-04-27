@@ -365,11 +365,12 @@ useEffect(() => {
                             <span>{m?.nome ?? "—"}</span>
                             <StatusBadge status={a.status} />
                           </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                             {fmtDateTime(a.data_saida)} → {fmtDateTime(a.data_retorno_prevista)}
                             {a.destino && <> • {a.destino}</>}
                           </p>
-                      <div className="flex flex-wrap gap-2">
+                        </div>
+                        <div className="flex flex-wrap gap-2">
   {a.status === "agendado" && a.motorista_id === perfil?.motorista_id && (
     <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
       Iniciar uso
