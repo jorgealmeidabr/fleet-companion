@@ -43,7 +43,7 @@ const inRange = (day: Date, start: string, end: string | null) => {
 
 export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
-  const { isAdmin, user, perfil } = useAuth();
+  const { isAdmin, user, perfil = null } = useAuth();
   const { toast } = useToast();
 
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
