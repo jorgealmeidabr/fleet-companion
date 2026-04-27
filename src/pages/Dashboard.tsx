@@ -12,7 +12,21 @@ import {
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { differenceInDays, parseISO, format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+
+// Safe wrappers — never throw on null/invalid dates
+const safeParse = (d: string | null | undefined): Date | null => {
+  if (!d || typeof d !== "string") return null;
+  try {
+    const x = parseISO(d);
+    return isNaN(x.getTime()) ? null : x;
+  } catch { return null; }
+};
+const safeDiffDays = (d: string | null | undefined, ref: Date): number | null => {
+  const x = safeParse(d);
+  return x ? differenceInDays(ref, x) : null;
+};
 
 export default function Dashboard() {
   const { canSeeFinancial } = usePermissions();
@@ -54,7 +68,10 @@ export default function Dashboard() {
   const ini = startOfMonth(now), fim = endOfMonth(now);
   const iniAnt = startOfMonth(subMonths(now, 1)), fimAnt = endOfMonth(subMonths(now, 1));
 
-  const inRange = (d: string, a: Date, b: Date) => { const x = parseISO(d); return x >= a && x <= b; };
+  const inRange = (d: string | null | undefined, a: Date, b: Date) => {
+    const x = safeParse(d);
+    return x ? x >= a && x <= b : false;
+  };
   const gastoCombMes = abastecimentos.filter(x => inRange(x.data, ini, fim)).reduce((s, x) => s + Number(x.valor_total), 0);
   const gastoCombMesAnt = abastecimentos.filter(x => inRange(x.data, iniAnt, fimAnt)).reduce((s, x) => s + Number(x.valor_total), 0);
   const varComb = gastoCombMesAnt > 0 ? ((gastoCombMes - gastoCombMesAnt) / gastoCombMesAnt) * 100 : 0;
@@ -81,15 +98,18 @@ export default function Dashboard() {
     const ms = manutencoes.filter(m => m.veiculo_id === v.id);
     ms.forEach(m => {
       if (m.proxima_km && v.km_atual > m.proxima_km) alertas.push({ tipo: "Manutenção", msg: `${v.placa} – km vencido (${v.km_atual} > ${m.proxima_km})`, nivel: "danger" });
-      if (m.proxima_data && parseISO(m.proxima_data) < now && m.status !== "concluida") alertas.push({ tipo: "Manutenção", msg: `${v.placa} – data vencida (${m.proxima_data})`, nivel: "danger" });
+      const px = safeParse(m.proxima_data);
+      if (px && px < now && m.status !== "concluida") alertas.push({ tipo: "Manutenção", msg: `${v.placa} – data vencida (${m.proxima_data})`, nivel: "danger" });
     });
-    const ult = checklists.filter(c => c.veiculo_id === v.id).sort((a, b) => b.data.localeCompare(a.data))[0];
-    if (!ult || differenceInDays(now, parseISO(ult.data)) > 7) {
-      alertas.push({ tipo: "Checklist", msg: `${v.placa} – sem checklist há ${ult ? differenceInDays(now, parseISO(ult.data)) : "+7"} dias`, nivel: "warning" });
+    const ult = checklists.filter(c => c.veiculo_id === v.id).sort((a, b) => (b.data ?? "").localeCompare(a.data ?? ""))[0];
+    const ultDiff = ult ? safeDiffDays(ult.data, now) : null;
+    if (!ult || (ultDiff !== null && ultDiff > 7)) {
+      alertas.push({ tipo: "Checklist", msg: `${v.placa} – sem checklist há ${ultDiff !== null ? ultDiff : "+7"} dias`, nivel: "warning" });
     }
   });
   motoristas.forEach(m => {
-    const dias = differenceInDays(parseISO(m.cnh_validade), now);
+    const dias = safeDiffDays(m.cnh_validade, now);
+    if (dias === null) return;
     if (dias < 0) alertas.push({ tipo: "CNH", msg: `${m.nome} – CNH vencida`, nivel: "danger" });
     else if (dias <= 30) alertas.push({ tipo: "CNH", msg: `${m.nome} – CNH vence em ${dias}d`, nivel: "warning" });
   });
@@ -139,6 +159,7 @@ export default function Dashboard() {
         <KpiCard label="Veículos cadastrados" value={veiculos.length} icon={Car} />
       </div>
 
+      <ErrorBoundary fallback={<div className="mt-6 rounded-lg border border-border bg-muted/30 p-6 text-sm text-muted-foreground">Não foi possível carregar os gráficos.</div>}>
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="shadow-card lg:col-span-2">
           <CardHeader><CardTitle className="text-base">Gastos mensais (últimos 6 meses)</CardTitle></CardHeader>
@@ -206,6 +227,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      </ErrorBoundary>
 
       <Card className="mt-6 shadow-card">
         <CardHeader>
