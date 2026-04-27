@@ -66,10 +66,10 @@ export default function Auth() {
       <div className="flex flex-1 items-center justify-center bg-[#1a1a1a] p-6 md:w-[35%] md:p-10">
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-white text-center">
               {forgot ? "Recuperar senha" : "Acessar sistema"}
             </h1>
-            <p className="mt-2 text-sm text-white/60">
+            <p className="mt-2 text-sm text-white/60 text-center">
               {forgot
                 ? "Enviaremos um link para redefinir sua senha."
                 : "Entre com suas credenciais para continuar."}
