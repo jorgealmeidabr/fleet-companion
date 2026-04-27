@@ -53,23 +53,36 @@ export default function Auth() {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      {/* Lado esquerdo - Logo (amarelo com animação) */}
-      <div className="relative flex items-center justify-center overflow-hidden bg-[#FFD600] p-8 md:w-[65%] md:p-12">
-        {/* Padrão animado de formas geométricas */}
+      {/* Lado esquerdo - Logo (amarelo claro empresarial com animação 3D minimalista) */}
+      <div className="relative flex items-center justify-center overflow-hidden bg-[#FFF4B8] p-8 md:w-[65%] md:p-12">
+        {/* Gradiente suave de profundidade */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden="true"
+          style={{
+            background:
+              "radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.55) 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, rgba(230,194,0,0.18) 0%, transparent 60%)",
+          }}
+        />
+        {/* Orbs 3D minimalistas com blur — movimento lento e suave */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <span className="absolute left-[10%] top-[15%] h-24 w-24 rounded-full bg-[#E6C200] opacity-60 animate-float-slow" />
-          <span className="absolute right-[15%] top-[25%] h-16 w-16 rotate-45 bg-[#E6C200] opacity-50 animate-float-medium" />
-          <span className="absolute left-[20%] bottom-[20%] h-32 w-32 rounded-full bg-[#E6C200] opacity-40 animate-float-fast" />
-          <span className="absolute right-[25%] bottom-[15%] h-20 w-20 rotate-45 bg-[#E6C200] opacity-50 animate-float-slow" />
-          <span className="absolute left-[45%] top-[60%] h-12 w-12 rounded-full bg-[#E6C200] opacity-60 animate-float-medium" />
-          <span className="absolute right-[40%] top-[10%] h-14 w-14 rotate-45 bg-[#E6C200] opacity-40 animate-float-fast" />
-          <span className="absolute left-[5%] bottom-[40%] h-10 w-10 rounded-full bg-[#E6C200] opacity-50 animate-float-medium" />
-          <span className="absolute right-[5%] top-[55%] h-20 w-20 rounded-full bg-[#E6C200] opacity-40 animate-float-slow" />
+          <span
+            className="absolute -left-20 top-[10%] h-72 w-72 rounded-full opacity-70 blur-3xl animate-float-slow"
+            style={{ background: "radial-gradient(circle at 30% 30%, #FFFFFF 0%, #FFE680 60%, transparent 75%)" }}
+          />
+          <span
+            className="absolute right-[-60px] top-[55%] h-80 w-80 rounded-full opacity-60 blur-3xl animate-float-medium"
+            style={{ background: "radial-gradient(circle at 40% 40%, #FFF7CC 0%, #F0D55A 60%, transparent 75%)" }}
+          />
+          <span
+            className="absolute left-[35%] bottom-[-80px] h-64 w-64 rounded-full opacity-50 blur-3xl animate-float-fast"
+            style={{ background: "radial-gradient(circle at 50% 50%, #FFFFFF 0%, #FFE680 55%, transparent 75%)" }}
+          />
         </div>
         <img
           src={brqLogo}
           alt="BRQ Frota Interna"
-          style={{ mixBlendMode: "multiply" }}
+          style={{ mixBlendMode: "multiply", filter: "drop-shadow(0 18px 30px rgba(120,90,0,0.18))" }}
           className="relative z-10 max-h-48 w-auto max-w-md object-contain md:max-h-[60vh]"
         />
       </div>
