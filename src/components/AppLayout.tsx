@@ -51,8 +51,8 @@ function AppSidebar({ alertCount }: { alertCount: number }) {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white shadow-elevated">
-            <img src={brqLogo} alt="BRQ Frota Interna" className="h-full w-full object-contain" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden">
+            <img src={brqLogo} alt="BRQ Frota Interna" style={{ mixBlendMode: "multiply" }} className="h-full w-full object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
