@@ -64,11 +64,20 @@ export default function Agendamentos() {
     setVeiculos((data ?? []) as Veiculo[]);
   };
 
-  useEffect(() => {
-    reloadVeiculos();
-    supabase.from("motoristas").select("*").eq("status", "ativo").order("nome")
-      .then(({ data }) => setMotoristas((data ?? []) as Motorista[]));
-  }, []);
+useEffect(() => {
+  reloadVeiculos();
+  supabase.from("motoristas").select("*").eq("status", "ativo").order("nome")
+    .then(({ data }) => setMotoristas((data ?? []) as Motorista[]));
+
+  const channel = supabase
+    .channel("veiculos-realtime")
+    .on("postgres_changes", { event: "*", schema: "public", table: "veiculos" }, () => {
+      reloadVeiculos();
+    })
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}, []);
 
   // Mapas auxiliares
   const veiculoMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
@@ -105,28 +114,45 @@ export default function Agendamentos() {
   }, [ativos]);
 
   // ---- Confirmar novo agendamento
-  const confirmarAgendamento = async () => {
-    if (!pickedVeiculo) return;
-    if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
-      toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+ const confirmarAgendamento = async () => {
+  if (!pickedVeiculo) return;
+  if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
+    toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+    return;
+  }
+  try {
+    const { data: conflitos } = await supabase
+      .from("agendamentos")
+      .select("id")
+      .eq("veiculo_id", pickedVeiculo.id)
+      .in("status", ["agendado", "em_uso"])
+      .lt("data_saida", form.data_retorno_prevista)
+      .gt("data_retorno_prevista", form.data_saida);
+
+    if (conflitos && conflitos.length > 0) {
+      toast({
+        title: "Veículo indisponível neste período",
+        description: "Já existe um agendamento ativo para este veículo nas datas selecionadas.",
+        variant: "destructive",
+      });
       return;
     }
-    try {
-      await insert({
-        ...form,
-        veiculo_id: pickedVeiculo.id,
-        status: "agendado",
-        km_saida: pickedVeiculo.km_atual,
-      });
-      await (supabase.from("veiculos") as any).update({ status: "reservado" }).eq("id", pickedVeiculo.id);
-      await reloadVeiculos();
-      setPickedVeiculo(null);
-      setForm({});
-      toast({ title: "Agendamento confirmado", description: `Veículo ${pickedVeiculo.placa} reservado.` });
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
-    }
-  };
+
+    await insert({
+      ...form,
+      veiculo_id: pickedVeiculo.id,
+      status: "agendado",
+      km_saida: pickedVeiculo.km_atual,
+    });
+    await (supabase.from("veiculos") as any).update({ status: "reservado" }).eq("id", pickedVeiculo.id);
+    await reloadVeiculos();
+    setPickedVeiculo(null);
+    setForm({});
+    toast({ title: "Agendamento confirmado", description: `Veículo ${pickedVeiculo.placa} reservado.` });
+  } catch (e: any) {
+    toast({ title: "Erro", description: e.message, variant: "destructive" });
+  }
+};
 
   // ---- Iniciar uso (agendado → em_uso)
   const iniciarUso = async (a: Agendamento) => {
@@ -343,25 +369,22 @@ export default function Agendamentos() {
                             {fmtDateTime(a.data_saida)} → {fmtDateTime(a.data_retorno_prevista)}
                             {a.destino && <> • {a.destino}</>}
                           </p>
-                        </div>
-{(isAdmin || a.motorista_id === perfil?.motorista_id) && (
-  <div className="flex flex-wrap gap-2">
-    {a.status === "agendado" && (
-      <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
-        Iniciar uso
-      </Button>
-    )}
-    {a.status === "em_uso" && (
-      <Button size="sm" className="bg-gradient-brand text-primary-foreground"
-        onClick={() => { setReturning(a); setRetForm({ km_retorno: v?.km_atual }); }}>
-        <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
-      </Button>
-    )}
-    {isAdmin && (
-      <Button size="sm" variant="ghost" onClick={() => cancelar(a)}>Cancelar</Button>
-    )}
-  </div>
-)}
+                      <div className="flex flex-wrap gap-2">
+  {a.status === "agendado" && a.motorista_id === perfil?.motorista_id && (
+    <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
+      Iniciar uso
+    </Button>
+  )}
+  {a.status === "em_uso" && (isAdmin || a.motorista_id === perfil?.motorista_id) && (
+    <Button size="sm" className="bg-gradient-brand text-primary-foreground"
+      onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
+      <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
+    </Button>
+  )}
+  {isAdmin && (
+    <Button size="sm" variant="ghost" onClick={() => cancelar(a)}>Cancelar</Button>
+  )}
+</div>
                       </li>
                     );
                   })}
