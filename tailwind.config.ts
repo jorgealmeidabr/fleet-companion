@@ -95,6 +95,10 @@ export default {
           "0%, 100%": { transform: "translate(0, 0) rotate(0deg)" },
           "50%": { transform: "translate(40px, 20px) rotate(90deg)" },
         },
+        "car-drive": {
+          "0%": { transform: "translateX(-20vw)" },
+          "100%": { transform: "translateX(120vw)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
