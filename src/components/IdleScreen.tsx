@@ -13,9 +13,7 @@ interface IdleScreenProps {
 export function IdleScreen({ onExit }: IdleScreenProps) {
   useEffect(() => {
     const handler = () => onExit();
-    const events: (keyof WindowEventMap)[] = [
-      "mousemove", "mousedown", "keydown", "touchstart", "wheel", "pointerdown",
-    ];
+    const events: (keyof WindowEventMap)[] = ["mousedown", "touchstart", "pointerdown"];
     events.forEach((ev) => window.addEventListener(ev, handler, { passive: true }));
     return () => {
       events.forEach((ev) => window.removeEventListener(ev, handler));
