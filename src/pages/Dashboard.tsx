@@ -224,7 +224,7 @@ export default function Dashboard() {
               {custosVeic.length === 0 && <p className="text-sm text-muted-foreground">Sem dados.</p>}
               {custosVeic.map((v, i) => (
                 <div key={v.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-brand text-sm font-bold text-primary-foreground">{i + 1}</div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-brand text-sm font-bold text-primary-foreground bg-warning">{i + 1}</div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{v.placa} – {v.marca} {v.modelo}</p>
                     <p className="text-xs text-muted-foreground">{v.km_atual.toLocaleString("pt-BR")} km</p>
