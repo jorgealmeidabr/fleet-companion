@@ -535,18 +535,40 @@ useEffect(() => {
                 Km saída: {fmtNumber(returning.km_saida ?? 0)}
               </p>
               <div className="space-y-1.5">
-                <Label>Km de retorno *</Label>
-                <Input type="number" value={retForm.km_retorno ?? ""} onChange={(e) => setRetForm(s => ({ ...s, km_retorno: Number(e.target.value) }))} />
+                <Label>Km de retorno (hodômetro) *</Label>
+                <Input type="number" placeholder="Informe o KM atual" value={retForm.km_retorno ?? ""} onChange={(e) => setRetForm(s => ({ ...s, km_retorno: Number(e.target.value) }))} />
+                <p className="text-xs text-muted-foreground">Esse KM virará o KM de saída do próximo agendamento.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-2"><Camera className="h-4 w-4" />Foto do hodômetro *</Label>
+                {!retForm.foto_url ? (
+                  <Input type="file" accept="image/*" capture="environment" disabled={uploadingFoto}
+                    onChange={(e) => handleFotoHodometro(e.target.files)} />
+                ) : (
+                  <div className="relative inline-block">
+                    <img src={retForm.foto_url} alt="hodômetro" className="h-32 rounded-md border border-border object-cover" />
+                    <button type="button" onClick={() => setRetForm(s => ({ ...s, foto_url: undefined }))}
+                      className="absolute top-1 right-1 rounded-full bg-destructive p-1 text-destructive-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                {uploadingFoto && <p className="text-xs text-muted-foreground inline-flex items-center gap-1"><Upload className="h-3 w-3 animate-pulse" />Enviando...</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Observações</Label>
                 <Textarea value={retForm.observacoes ?? ""} onChange={(e) => setRetForm(s => ({ ...s, observacoes: e.target.value }))} />
               </div>
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
+                ⚠️ Após a devolução, o checklist pós-uso é obrigatório antes de novas ações no sistema.
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
-            <Button className="bg-gradient-brand text-primary-foreground" onClick={confirmarDevolucao}>Confirmar devolução</Button>
+            <Button className="bg-gradient-brand text-primary-foreground" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
+              {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
