@@ -15,7 +15,7 @@ const toneStyles: Record<string, string> = {
   default: "bg-muted/50 text-muted-foreground",
   success: "text-secondary-foreground bg-amber-500",
   warning: "bg-warning/10 text-warning",
-  destructive: "bg-destructive/10 text-destructive",
+  destructive: "bg-amber-500 text-amber-50",
   info: "bg-info/10 text-info",
   brand: "bg-gradient-brand text-primary-foreground bg-warning",
 };
