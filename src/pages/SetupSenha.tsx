@@ -51,7 +51,7 @@ export default function SetupSenha() {
             <Truck className="h-6 w-6" />
           </div>
           <div className="text-left">
-            <h1 className="text-xl font-bold">BRQ - FROTA INTERNA</h1>
+            <h1 className="text-xl font-bold">BRQ - Frota Interna</h1>
             <p className="text-xs text-white/60">Defina sua senha de acesso</p>
           </div>
         </div>
