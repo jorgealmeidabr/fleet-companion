@@ -23,10 +23,19 @@ import {
   Plus, Search, MoreVertical, ShieldCheck, Mail, Eye, EyeOff, Copy,
   LayoutDashboard, Car, Users as UsersIcon, Wrench, Fuel, CalendarRange,
   ClipboardCheck, AlertTriangle, Bell, History, DollarSign, Lock, Check,
-  FileText,
+  FileText, Clock, X,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+
+interface PendingProfile {
+  id: string;
+  nome: string | null;
+  email: string | null;
+  cargo_pretendido: string | null;
+  status: "pendente" | "ativo" | "rejeitado";
+  created_at: string;
+}
 
 interface Row extends UsuarioPerfil {
   motorista?: Motorista | null;
