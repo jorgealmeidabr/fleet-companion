@@ -52,6 +52,7 @@ export function useChecklistPendente() {
         .from("checklists") as any)
         .select("id", { count: "exact", head: true })
         .eq("veiculo_id", a.veiculo_id)
+        .eq("motorista_id", perfil.motorista_id)
         .gte("created_at", a.data_retorno_real);
 
       if ((count ?? 0) === 0) {
