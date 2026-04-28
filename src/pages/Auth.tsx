@@ -74,6 +74,19 @@ export default function Auth() {
             linear-gradient(to bottom, rgba(255,255,255,0.055) 1px, transparent 1px);
           background-size: 42px 42px;
           pointer-events: none;
+          animation: brqGridDrift 30s linear infinite;
+        }
+        .brq-left::after {
+          content: "";
+          position: absolute; inset: -20%;
+          background:
+            radial-gradient(circle at 20% 30%, rgba(212,160,23,0.18) 0, transparent 8%),
+            radial-gradient(circle at 70% 80%, rgba(212,160,23,0.14) 0, transparent 7%),
+            radial-gradient(circle at 85% 20%, rgba(245,196,0,0.12) 0, transparent 6%),
+            radial-gradient(circle at 35% 75%, rgba(212,160,23,0.10) 0, transparent 9%);
+          filter: blur(2px);
+          pointer-events: none;
+          animation: brqOrbDrift 22s ease-in-out infinite alternate;
         }
         .brq-eyebrow {
           position: absolute;
@@ -88,11 +101,10 @@ export default function Auth() {
         .brq-logo-wrap {
           position: relative; z-index: 2;
           display: flex; flex-direction: column; align-items: center; gap: 14px;
+          animation: brqFloat 6s ease-in-out infinite;
         }
         .brq-logo {
           max-width: 460px; width: 100%; height: auto;
-          filter: brightness(0) invert(1);
-          mix-blend-mode: screen;
         }
         .brq-tagline {
           font-family: 'Barlow', sans-serif;
