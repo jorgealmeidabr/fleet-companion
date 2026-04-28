@@ -250,8 +250,7 @@ export default function Solicitacoes() {
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant={activeTab === "maintenance" ? "default" : "outline"}
-                className={cn(activeTab === "maintenance" && "bg-gradient-brand text-primary-foreground")}
+                variant={activeTab === "maintenance" ? "brand" : "outline"}
                 onClick={() => setActiveTab("maintenance")}
               >
                 <Wrench className="mr-2 h-4 w-4" />Manutenção
