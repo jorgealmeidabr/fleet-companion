@@ -19,7 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime } from "@/lib/format";
 import type { Request, Veiculo, RequestType, RequestStatus } from "@/lib/types";
-import { Wrench, Fuel, FileText, ArrowRight, Download, Loader2 } from "lucide-react";
+import { Wrench, Fuel, FileText, Download, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildRequestPdf, uploadRequestPdf, downloadBlob } from "@/lib/requestPdf";
 
@@ -36,17 +36,11 @@ const URG_OPTIONS = [
   { value: "high",   label: "Alta" },
 ];
 
-const NEXT_STATUS: Record<RequestStatus, RequestStatus | null> = {
-  requested: "pending",
-  pending: "completed",
-  completed: null,
-};
-
-const NEXT_LABEL: Record<RequestStatus, string> = {
-  requested: "Marcar como pendente",
-  pending: "Concluir",
-  completed: "—",
-};
+const STATUS_OPTIONS: { value: RequestStatus; label: string }[] = [
+  { value: "requested", label: "Solicitado" },
+  { value: "pending",   label: "Pendente"   },
+  { value: "completed", label: "Concluído"  },
+];
 
 function TypePill({ type }: { type: RequestType }) {
   if (type === "maintenance") {
@@ -188,9 +182,8 @@ export default function Solicitacoes() {
   };
 
   // ========== AÇÕES ADMIN ==========
-  const advanceStatus = async (r: Request) => {
-    const next = NEXT_STATUS[r.status];
-    if (!next) return;
+  const setStatus = async (r: Request, next: RequestStatus) => {
+    if (next === r.status) return;
     const { error } = await (supabase as any).from("requests").update({ status: next }).eq("id", r.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Status atualizado" });
@@ -436,15 +429,22 @@ export default function Solicitacoes() {
                           {v ? <><span className="font-mono">{v.placa}</span> <span className="text-muted-foreground">{v.modelo}</span></> : "—"}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{fmtDateTime(r.created_at)}</TableCell>
-                        <TableCell><StatusBadge status={r.status} /></TableCell>
+                        <TableCell>
+                          {isAdmin ? (
+                            <Select value={r.status} onValueChange={(v: RequestStatus) => setStatus(r, v)}>
+                              <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {STATUS_OPTIONS.map(o => (
+                                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <StatusBadge status={r.status} />
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            {isAdmin && r.status !== "completed" && (
-                              <Button size="sm" variant="outline" onClick={() => advanceStatus(r)} title={NEXT_LABEL[r.status]}>
-                                <ArrowRight className="mr-1 h-3.5 w-3.5" />
-                                {r.status === "requested" ? "Pendente" : "Concluir"}
-                              </Button>
-                            )}
                             <Button size="sm" variant="ghost" onClick={() => downloadPdf(r)}>
                               <Download className="mr-1 h-3.5 w-3.5" />PDF
                             </Button>
