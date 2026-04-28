@@ -130,6 +130,7 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+      </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         {!collapsed && (
           <div className="px-2 py-1 text-[10px] text-sidebar-foreground/50">
