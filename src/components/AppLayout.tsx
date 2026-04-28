@@ -16,6 +16,7 @@ import { useRequestBadge } from "@/hooks/useRequestBadge";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { ChecklistPendenteBlock } from "@/components/ChecklistPendenteBlock";
+import { DigitalClock } from "@/components/DigitalClock";
 import { cn } from "@/lib/utils";
 import type { ModuloPermissao } from "@/lib/types";
 
@@ -156,23 +157,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar alertCount={alertCount} requestCount={requestCount} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
-            <SidebarTrigger />
+          <header className="sticky top-0 z-30 flex min-h-14 items-start gap-2 border-b border-border bg-background/80 px-3 py-2 backdrop-blur">
+            <SidebarTrigger className="mt-1" />
             <div className="ml-2 hidden text-sm font-medium text-muted-foreground md:block" />
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-start gap-2">
               <GlobalSearch />
               {tipoConta && (
-                <Badge variant={tipoConta === "admin" ? "brand" : "secondary"}>
+                <Badge variant={tipoConta === "admin" ? "brand" : "secondary"} className="mt-1">
                   {tipoConta === "admin" ? "Admin" : "Usuário"}
                 </Badge>
               )}
-              <span className="hidden text-xs text-muted-foreground md:inline">{user?.email}</span>
-              <Button variant="ghost" size="icon" onClick={toggle} aria-label="Alternar tema">
-                {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sair">
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1">
+                  <span className="hidden text-xs text-muted-foreground md:inline">{user?.email}</span>
+                  <Button variant="ghost" size="icon" onClick={toggle} aria-label="Alternar tema">
+                    {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sair">
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+                <DigitalClock />
+              </div>
             </div>
           </header>
           <main className="flex-1 p-4 md:p-6">
