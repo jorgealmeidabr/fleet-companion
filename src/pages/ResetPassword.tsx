@@ -66,7 +66,7 @@ export default function ResetPassword() {
                   <Label htmlFor="cp">Confirmar senha</Label>
                   <Input id="cp" type="password" minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
                 </div>
-                <Button type="submit" className="w-full bg-gradient-brand text-primary-foreground" disabled={loading}>
+                <Button type="submit" variant="brand" className="w-full" disabled={loading}>
                   {loading ? "Salvando..." : "Atualizar senha"}
                 </Button>
               </form>
