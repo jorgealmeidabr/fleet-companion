@@ -590,7 +590,7 @@ function UserWizard({
           {step > 1 && <Button type="button" variant="outline" onClick={back}>Voltar</Button>}
           {step < 3 && <Button type="button" onClick={next}>Continuar</Button>}
           {step === 3 && (
-            <Button type="button" disabled={saving} onClick={submit} className="bg-gradient-brand text-primary-foreground">
+            <Button type="button" disabled={saving} onClick={submit} variant="brand">
               {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar usuário"}
             </Button>
           )}
