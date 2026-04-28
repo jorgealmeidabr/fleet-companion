@@ -54,6 +54,8 @@ export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
   const { isAdmin, perfil = null } = useAuth();
   const { toast } = useToast();
+  const { pendentes: checklistPendentes } = useChecklistPendente();
+  const temPendencia = !isAdmin && checklistPendentes.length > 0;
   const navigate = useNavigate();
 
   // Toca 3 bipes curtos via WebAudio (sem assets externos)
