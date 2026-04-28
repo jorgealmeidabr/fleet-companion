@@ -375,42 +375,80 @@ function UserWizard({
         const userId = created.user?.id;
         if (!userId) throw new Error("Não foi possível criar o login do usuário.");
 
-        let motoristaId = linkId;
-        if (motoristaId) {
-          const { error } = await (supabase as any)
-            .from("motoristas")
-            .update({ user_id: userId, nome, email, telefone: telefone || null, cargo: cargo || null })
-            .eq("id", motoristaId);
-          if (error) throw new Error(error.message);
-        } else {
-          const { data: motorista, error } = await (supabase as any)
-            .from("motoristas")
-            .insert({
-              nome,
-              email,
-              telefone: telefone || null,
-              cargo: cargo || null,
-              cnh_numero: cnhNum || "00000000000",
-              cnh_categoria: cnhCat || "B",
-              cnh_validade: cnhVal || new Date(Date.now() + 5*365*86400000).toISOString().slice(0,10),
-              user_id: userId,
-              status: "ativo",
-            })
-            .select("id")
-            .single();
-          if (error) throw new Error(error.message);
-          motoristaId = motorista.id;
-        }
+        // Pequena espera para garantir que o trigger handle_new_user já criou profile/role
+        await new Promise((r) => setTimeout(r, 400));
 
-        const { error: perfilErr } = await (supabase as any).from("usuarios_perfis").insert({
-          user_id: userId,
-          motorista_id: motoristaId,
-          tipo_conta: tipoConta,
-          permissoes: finalPerms,
-          ativo: true,
-          must_change_password: true,
-        });
-        if (perfilErr) throw new Error(perfilErr.message);
+        let motoristaId = linkId;
+
+        if (tipoConta === "admin" && !linkId) {
+          // === ADMIN: usa a função promote_to_admin que cria motorista + perfil de admin ===
+          const { error: promoErr } = await (supabase as any).rpc("promote_to_admin", { _email: email });
+          if (promoErr) throw new Error("Erro ao promover admin: " + promoErr.message);
+
+          // Atualiza dados do motorista criado pela função com os dados do formulário
+          const { data: motCreated, error: motFetchErr } = await supabase
+            .from("motoristas")
+            .select("id")
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (motFetchErr) throw new Error(motFetchErr.message);
+          if (!motCreated) throw new Error("Motorista do admin não foi encontrado após promoção.");
+          motoristaId = motCreated.id;
+
+          await (supabase as any).from("motoristas").update({
+            nome,
+            telefone: telefone || null,
+            cargo: cargo || null,
+            cnh_numero: cnhNum || "00000000000",
+            cnh_categoria: cnhCat || "B",
+            cnh_validade: cnhVal || new Date(Date.now() + 5*365*86400000).toISOString().slice(0,10),
+          }).eq("id", motoristaId);
+
+          // Garante permissões/flag no perfil já criado pela função
+          await (supabase as any).from("usuarios_perfis").update({
+            tipo_conta: "admin",
+            permissoes: finalPerms,
+            ativo: true,
+            must_change_password: true,
+          }).eq("user_id", userId);
+        } else {
+          // === USUÁRIO comum (ou admin vinculado a motorista existente) ===
+          if (motoristaId) {
+            const { error } = await (supabase as any)
+              .from("motoristas")
+              .update({ user_id: userId, nome, email, telefone: telefone || null, cargo: cargo || null })
+              .eq("id", motoristaId);
+            if (error) throw new Error(error.message);
+          } else {
+            const { data: motorista, error } = await (supabase as any)
+              .from("motoristas")
+              .insert({
+                nome,
+                email,
+                telefone: telefone || null,
+                cargo: cargo || null,
+                cnh_numero: cnhNum || "00000000000",
+                cnh_categoria: cnhCat || "B",
+                cnh_validade: cnhVal || new Date(Date.now() + 5*365*86400000).toISOString().slice(0,10),
+                user_id: userId,
+                status: "ativo",
+              })
+              .select("id")
+              .single();
+            if (error) throw new Error(error.message);
+            motoristaId = motorista.id;
+          }
+
+          const { error: perfilErr } = await (supabase as any).from("usuarios_perfis").insert({
+            user_id: userId,
+            motorista_id: motoristaId,
+            tipo_conta: tipoConta,
+            permissoes: finalPerms,
+            ativo: true,
+            must_change_password: true,
+          });
+          if (perfilErr) throw new Error(perfilErr.message);
+        }
 
         toast({
           title: "Usuário criado",
