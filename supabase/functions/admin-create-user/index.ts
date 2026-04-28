@@ -1,5 +1,5 @@
 // Edge Function: admin-create-user
-// Cria um usuário no Auth + motorista + perfil. Apenas admins autenticados.
+// Cria usuário no Auth via service role e grava os registros necessários explicitamente.
 // Deploy:  supabase functions deploy admin-create-user --project-ref <ref>
 // Secrets necessários no projeto Supabase:
 //   - SUPABASE_URL                  (já vem por padrão)
@@ -26,8 +26,14 @@ interface Payload {
   cnh_validade?: string | null;
   tipo_conta: "admin" | "usuario";
   permissoes: Record<string, boolean>;
-  link_motorista_id?: string | null; // se vincular a motorista existente
+  link_motorista_id?: string | null;
 }
+
+const fallbackCnhValidade = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 5);
+  return d.toISOString().slice(0, 10);
+};
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -103,7 +109,7 @@ Deno.serve(async (req) => {
   if (senha.length < 8) return json({ error: "Senha deve ter ao menos 8 caracteres" }, 400);
   if (!["admin", "usuario"].includes(tipo_conta)) return json({ error: "tipo_conta inválido" }, 400);
 
-  // 3. Criar usuário no Auth
+  // 3. Criar usuário no Auth com privilégios administrativos
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
     password: senha,
@@ -122,46 +128,57 @@ Deno.serve(async (req) => {
     return json({ error: msg }, 400);
   };
 
-  // 4. Vincular ou criar motorista
+  // 4. Garante public.profiles manualmente. Não depende do trigger on_auth_user_created.
+  const { error: profileErr } = await admin
+    .from("profiles")
+    .upsert({ id: userId, nome, email }, { onConflict: "id" });
+  if (profileErr) return rollback("Erro ao criar profile: " + profileErr.message);
+
+  // 5. Admin: promover por RPC e finalizar. Não buscar/alterar motorista depois.
+  if (tipo_conta === "admin") {
+    const { error: promoErr } = await admin.rpc("promote_to_admin", { _email: email });
+    if (promoErr) return rollback("Erro ao promover admin: " + promoErr.message);
+    return json({ user_id: userId, tipo_conta: "admin" });
+  }
+
+  // 6. Motorista: cria/vincula motorista explicitamente e cria usuarios_perfis explicitamente.
   let motoristaId: string;
   if (link_motorista_id) {
     const { error: linkErr } = await admin
       .from("motoristas")
-      .update({ user_id: userId })
+      .update({ user_id: userId, nome, email, telefone: telefone || null, cargo: cargo || null })
       .eq("id", link_motorista_id);
     if (linkErr) return rollback("Erro ao vincular motorista: " + linkErr.message);
     motoristaId = link_motorista_id;
   } else {
-    const fallbackValidade = new Date(Date.now() + 5 * 365 * 86400000).toISOString().slice(0, 10);
-    const { data: mNew, error: mErr } = await admin
+    const { data: motorista, error: motoristaErr } = await admin
       .from("motoristas")
       .insert({
+        user_id: userId,
         nome,
         email,
         telefone: telefone || null,
-        cargo,
+        cargo: cargo || null,
         cnh_numero: cnh_numero || "00000000000",
         cnh_categoria: cnh_categoria || "B",
-        cnh_validade: cnh_validade || fallbackValidade,
-        user_id: userId,
+        cnh_validade: cnh_validade || fallbackCnhValidade(),
         status: "ativo",
       })
       .select("id")
       .single();
-    if (mErr || !mNew) return rollback("Erro ao criar motorista: " + (mErr?.message ?? ""));
-    motoristaId = mNew.id;
+    if (motoristaErr || !motorista) return rollback("Erro ao criar motorista: " + (motoristaErr?.message ?? "desconhecido"));
+    motoristaId = motorista.id;
   }
 
-  // 5. Criar perfil
-  const { error: pErr } = await admin.from("usuarios_perfis").insert({
+  const { error: perfilErr } = await admin.from("usuarios_perfis").upsert({
     user_id: userId,
     motorista_id: motoristaId,
-    tipo_conta,
+    tipo_conta: "usuario",
     permissoes,
     ativo: true,
     must_change_password: true,
-  });
-  if (pErr) return rollback("Erro ao criar perfil: " + pErr.message);
+  }, { onConflict: "user_id" });
+  if (perfilErr) return rollback("Erro ao criar perfil de acesso: " + perfilErr.message);
 
-  return json({ user_id: userId, motorista_id: motoristaId });
+  return json({ user_id: userId, motorista_id: motoristaId, tipo_conta: "usuario" });
 });
