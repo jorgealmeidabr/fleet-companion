@@ -181,6 +181,15 @@ export default function Agendamentos() {
   // ---- Confirmar novo agendamento
   const confirmarAgendamento = async () => {
     if (!pickedVeiculo) return;
+    if (temPendencia) {
+      toast({
+        title: "Checklist pós-uso pendente",
+        description: "Finalize o checklist da última devolução antes de reservar outro veículo.",
+        variant: "destructive",
+      });
+      navigate("/checklists");
+      return;
+    }
     if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
