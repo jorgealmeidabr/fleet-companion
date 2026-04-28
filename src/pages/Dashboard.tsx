@@ -50,7 +50,7 @@ export default function Dashboard() {
         supabase.from("motoristas").select("*"),
         supabase.from("checklists").select("*"),
         supabase.from("multas").select("*"),
-        supabase.from("agendamentos").select("veiculo_id,status").in("status", ["agendado", "em_uso"]),
+        supabase.from("agendamentos").select("veiculo_id,status").eq("status", "ativo"),
       ]);
       setVeiculos((v.data ?? []) as Veiculo[]);
       setManutencoes((m.data ?? []) as Manutencao[]);
