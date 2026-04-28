@@ -277,7 +277,10 @@ export default function Auth() {
               </button>
 
               <p className="brq-note">
-                Acesso restrito da BRQ BrasilQuimia. Solicite seu cadastro ao administrador.
+                Não tem conta?{" "}
+                <a href="/cadastro" className="text-amber-500 hover:text-amber-400 font-medium">
+                  Solicitar cadastro
+                </a>
               </p>
             </form>
           )}
