@@ -16,7 +16,7 @@ export default function Auth() {
   const [forgot, setForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const { idle, wake } = useIdle(30000, !user);
+  const { idle, wake } = useIdle(40000, !user);
 
   if (!isSupabaseConfigured) return <Navigate to="/setup" replace />;
   if (user) return <Navigate to="/" replace />;
