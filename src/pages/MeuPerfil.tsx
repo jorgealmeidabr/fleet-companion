@@ -22,6 +22,7 @@ const MOD_LABELS: Record<ModuloPermissao, string> = {
   agendamentos: "Agendamentos", checklists: "Checklists",
   multas: "Multas", alertas: "Alertas", historico: "Histórico",
   usuarios: "Usuários", financeiro: "Valores financeiros",
+  solicitacoes: "Solicitações",
 };
 
 export default function MeuPerfil() {

@@ -26,6 +26,7 @@ import Historico from "./pages/Historico";
 import Alertas from "./pages/Alertas";
 import Usuarios from "./pages/Usuarios";
 import MeuPerfil from "./pages/MeuPerfil";
+import Solicitacoes from "./pages/Solicitacoes";
 import NotFound from "./pages/NotFound";
 import type { ModuloPermissao } from "@/lib/types";
 
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/multas" element={<Protected perm="multas"><Multas /></Protected>} />
             <Route path="/historico" element={<Protected perm="historico"><Historico /></Protected>} />
             <Route path="/alertas" element={<Protected perm="alertas"><Alertas /></Protected>} />
+            <Route path="/solicitacoes" element={<Protected perm="solicitacoes"><Solicitacoes /></Protected>} />
             <Route path="/usuarios" element={<Protected admin><Usuarios /></Protected>} />
             <Route path="/meu-perfil" element={<ProtectedRoute><AppLayout><MeuPerfil /></AppLayout></ProtectedRoute>} />
 
