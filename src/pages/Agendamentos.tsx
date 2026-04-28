@@ -10,18 +10,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
 import type { Agendamento, Veiculo, Motorista } from "@/lib/types";
-import { Camera, Car, CheckCircle2, MapPin, RotateCcw, Upload, User, X } from "lucide-react";
+import { AlertTriangle, Camera, Car, CheckCircle2, MapPin, RotateCcw, Upload, User, X, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { uploadFiles } from "@/lib/storage";
+import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -32,8 +31,6 @@ const PALETTE = [
 ];
 const colorFor = (idx: number) => PALETTE[idx % PALETTE.length];
 
-
-
 const inRange = (day: Date, start: string, end: string | null) => {
   const s = new Date(start);
   const e = end ? new Date(end) : new Date(start);
@@ -43,9 +40,17 @@ const inRange = (day: Date, start: string, end: string | null) => {
   return d0 >= s0 && d0 <= e0;
 };
 
+const fmtHHmm = (d: Date) =>
+  `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+
+const toDatetimeLocal = (d: Date) => {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
-  const { isAdmin, user, perfil = null } = useAuth();
+  const { isAdmin, perfil = null } = useAuth();
   const { toast } = useToast();
 
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
@@ -68,20 +73,18 @@ export default function Agendamentos() {
     setVeiculos((data ?? []) as Veiculo[]);
   };
 
-useEffect(() => {
-  reloadVeiculos();
-  supabase.from("motoristas").select("*").eq("status", "ativo").order("nome")
-    .then(({ data }) => setMotoristas((data ?? []) as Motorista[]));
+  useEffect(() => {
+    reloadVeiculos();
+    supabase.from("motoristas").select("*").eq("status", "ativo").order("nome")
+      .then(({ data }) => setMotoristas((data ?? []) as Motorista[]));
 
-  const channel = supabase
-    .channel("veiculos-realtime")
-    .on("postgres_changes", { event: "*", schema: "public", table: "veiculos" }, () => {
-      reloadVeiculos();
-    })
-    .subscribe();
+    const channel = supabase
+      .channel("ag-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "veiculos" }, () => reloadVeiculos())
+      .subscribe();
 
-  return () => { supabase.removeChannel(channel); };
-}, []);
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // Mapas auxiliares
   const veiculoMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
@@ -92,24 +95,10 @@ useEffect(() => {
     return m;
   }, [veiculos]);
 
+  // Apenas agendamentos ATIVOS contam para conflito e visualização de ocupação
   const ativos = useMemo(
-    () => rows.filter(r => r.status === "agendado" || r.status === "em_uso"),
+    () => rows.filter(r => r.status === "ativo"),
     [rows]
-  );
-
-  // IDs de veículos com agendamento ativo (fonte de verdade client-side)
-  const veiculosOcupados = useMemo(
-    () => new Set(ativos.map(a => a.veiculo_id)),
-    [ativos]
-  );
-
-  // Lista de veículos com status efetivo (reservado se houver agendamento ativo)
-  const veiculosEfetivos = useMemo<Veiculo[]>(
-    () => veiculos.map(v => {
-      if (v.status === "manutencao" || v.status === "inativo") return v;
-      return veiculosOcupados.has(v.id) ? { ...v, status: "reservado" as Veiculo["status"] } : v;
-    }),
-    [veiculos, veiculosOcupados]
   );
 
   const eventosNoDia = useMemo(() => {
@@ -132,56 +121,89 @@ useEffect(() => {
     return Array.from(set).map(s => new Date(s + "T00:00:00"));
   }, [ativos]);
 
-  // ---- Confirmar novo agendamento
- const confirmarAgendamento = async () => {
-  if (!pickedVeiculo) return;
-  if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
-    toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
-    return;
-  }
-  try {
-    const { data: conflitos } = await supabase
-      .from("agendamentos")
-      .select("id")
-      .eq("veiculo_id", pickedVeiculo.id)
-      .in("status", ["agendado", "em_uso"])
-      .lt("data_saida", form.data_retorno_prevista)
-      .gt("data_retorno_prevista", form.data_saida);
+  // ---------- Detecção de conflito (form atual) ----------
+  const conflito = useMemo(() => {
+    if (!pickedVeiculo || !form.data_saida || !form.data_retorno_prevista) return null;
+    const inicio = new Date(form.data_saida);
+    const fim = new Date(form.data_retorno_prevista);
+    if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) return null;
+    if (fim <= inicio) return { tipo: "ordem" as const };
+    const choque = ativos.find(a =>
+      a.veiculo_id === pickedVeiculo.id &&
+      inicio < new Date(a.data_retorno_prevista) &&
+      fim > new Date(a.data_saida)
+    );
+    return choque ? { tipo: "overlap" as const, agendamento: choque } : null;
+  }, [pickedVeiculo, form.data_saida, form.data_retorno_prevista, ativos]);
 
-    if (conflitos && conflitos.length > 0) {
+  // Sugestões automáticas quando há conflito
+  const sugestoes = useMemo(() => {
+    if (!conflito || conflito.tipo !== "overlap" || !pickedVeiculo || !form.data_saida || !form.data_retorno_prevista) return [];
+    const inicio = new Date(form.data_saida);
+    const fim = new Date(form.data_retorno_prevista);
+    const durMin = Math.max(30, Math.round((fim.getTime() - inicio.getTime()) / 60000));
+    const dayRef = new Date(inicio); dayRef.setHours(0, 0, 0, 0);
+    const agsDoVeiculo = ativos.filter(a => a.veiculo_id === pickedVeiculo.id);
+    return suggestFreeSlots(agsDoVeiculo, dayRef, durMin, { max: 4 });
+  }, [conflito, pickedVeiculo, form.data_saida, form.data_retorno_prevista, ativos]);
+
+  // ---- Confirmar novo agendamento
+  const confirmarAgendamento = async () => {
+    if (!pickedVeiculo) return;
+    if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
+      toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+      return;
+    }
+    if (conflito) {
       toast({
-        title: "Veículo indisponível neste período",
-        description: "Já existe um agendamento ativo para este veículo nas datas selecionadas.",
+        title: conflito.tipo === "ordem" ? "Datas inválidas" : "Conflito de horário",
+        description: conflito.tipo === "ordem"
+          ? "A data de retorno deve ser posterior à de saída."
+          : "Já existe um agendamento ativo neste intervalo. Escolha outro.",
         variant: "destructive",
       });
       return;
     }
 
-    await insert({
-      ...form,
-      veiculo_id: pickedVeiculo.id,
-      status: "agendado",
-      km_saida: pickedVeiculo.km_atual,
-    });
-    await (supabase.from("veiculos") as any).update({ status: "reservado" }).eq("id", pickedVeiculo.id);
-    await reloadVeiculos();
-    setPickedVeiculo(null);
-    setForm({});
-    toast({ title: "Agendamento confirmado", description: `Veículo ${pickedVeiculo.placa} reservado.` });
-  } catch (e: any) {
-    toast({ title: "Erro", description: e.message, variant: "destructive" });
-  }
-};
+    try {
+      // Dupla checagem server-side (em caso de corrida)
+      const { data: conflitoSrv } = await (supabase.rpc as any)("check_agendamento_conflito", {
+        _veiculo_id: pickedVeiculo.id,
+        _inicio: form.data_saida,
+        _fim: form.data_retorno_prevista,
+        _ignore_id: null,
+      });
+      if (conflitoSrv === true) {
+        toast({ title: "Horário já reservado", description: "Outro usuário acabou de reservar este intervalo.", variant: "destructive" });
+        return;
+      }
 
-  // ---- Iniciar uso (agendado → em_uso) — sincroniza km_atual do veículo com km_saida
+      await insert({
+        ...form,
+        veiculo_id: pickedVeiculo.id,
+        status: "ativo",
+        km_saida: pickedVeiculo.km_atual,
+      });
+      setPickedVeiculo(null);
+      setForm({});
+      toast({ title: "Agendamento confirmado", description: `Veículo ${pickedVeiculo.placa} reservado.` });
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg.toLowerCase().includes("conflito")) {
+        toast({ title: "Conflito de horário", description: "O servidor bloqueou: já existe agendamento neste intervalo.", variant: "destructive" });
+      } else {
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      }
+    }
+  };
+
+  // ---- Iniciar uso (sincroniza km_atual)
   const iniciarUso = async (a: Agendamento) => {
-    await update(a.id, { status: "em_uso" } as Partial<Agendamento>);
     if (a.km_saida != null) {
-      await (supabase.from("veiculos") as any)
-        .update({ km_atual: a.km_saida })
-        .eq("id", a.veiculo_id);
+      await (supabase.from("veiculos") as any).update({ km_atual: a.km_saida }).eq("id", a.veiculo_id);
       await reloadVeiculos();
     }
+    toast({ title: "Uso iniciado", description: "Boa viagem!" });
   };
 
   // ---- Upload da foto do hodômetro
@@ -199,15 +221,16 @@ useEffect(() => {
     }
   };
 
-  // ---- Devolução
+  // ---- Devolução: encerra o agendamento (status = cancelado para sair do ativo)
+  // NOTA: como simplificamos para 2 status, "cancelado" = encerrado (não conta mais).
   const confirmarDevolucao = async () => {
     if (!returning) return;
     if (retForm.km_retorno == null || retForm.km_retorno < (returning.km_saida ?? 0)) {
-      toast({ title: "Km de retorno inválido", description: "O KM informado deve ser maior ou igual ao KM de saída.", variant: "destructive" });
+      toast({ title: "Km de retorno inválido", variant: "destructive" });
       return;
     }
     if (!retForm.foto_url) {
-      toast({ title: "Foto do hodômetro obrigatória", description: "Anexe uma foto do hodômetro para confirmar a devolução.", variant: "destructive" });
+      toast({ title: "Foto do hodômetro obrigatória", variant: "destructive" });
       return;
     }
     setSavingDevolucao(true);
@@ -217,20 +240,13 @@ useEffect(() => {
         km_retorno: retForm.km_retorno,
         data_retorno_real: new Date().toISOString(),
         observacoes: obsFinal,
-        status: "concluido",
+        status: "cancelado",
       } as Partial<Agendamento>);
-      // Atualiza km_atual do veículo → vira km_saida do próximo agendamento automaticamente
-      await (supabase.from("veiculos") as any).update({
-        status: "disponivel",
-        km_atual: retForm.km_retorno,
-      }).eq("id", returning.veiculo_id);
+      await (supabase.from("veiculos") as any).update({ km_atual: retForm.km_retorno }).eq("id", returning.veiculo_id);
       await reloadVeiculos();
       setReturning(null);
       setRetForm({});
-      toast({
-        title: "Devolução registrada",
-        description: "Lembre-se: o checklist pós-uso é obrigatório antes de novas ações.",
-      });
+      toast({ title: "Devolução registrada", description: "Lembre-se: o checklist pós-uso é obrigatório." });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
@@ -240,13 +256,14 @@ useEffect(() => {
 
   const cancelar = async (a: Agendamento) => {
     await update(a.id, { status: "cancelado" } as Partial<Agendamento>);
-    await (supabase.from("veiculos") as any).update({ status: "disponivel" }).eq("id", a.veiculo_id);
-    await reloadVeiculos();
   };
+
+  // Veículo é selecionável se NÃO está em manutencao/inativo (regra mantida).
+  const isVeiculoSelecionavel = (v: Veiculo) => v.status !== "manutencao" && v.status !== "inativo";
 
   return (
     <>
-      <PageHeader title="Agendamentos" subtitle="Reserve veículos, acompanhe usos e registre devoluções" />
+      <PageHeader title="Agendamentos" subtitle="Reserve veículos por horário — sem mais bloqueio por status" />
 
       <Tabs defaultValue="calendario" className="space-y-4">
         <TabsList>
@@ -270,34 +287,64 @@ useEffect(() => {
                   modifiersClassNames={{ hasEvent: "font-bold ring-2 ring-primary/40 rounded-md" }}
                   className={cn("p-3 pointer-events-auto")}
                 />
+                <div className="mt-2 flex items-center justify-around gap-2 px-2 pb-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-success/40" />Livre</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-destructive/70" />Ocupado</span>
+                </div>
               </CardContent>
             </Card>
 
             <div className="space-y-4">
+              {/* Timeline horária por veículo */}
               <Card className="shadow-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">
-                    Eventos em {selectedDay?.toLocaleDateString("pt-BR") ?? "—"}
+                    Disponibilidade por horário em {selectedDay?.toLocaleDateString("pt-BR") ?? "—"}
                   </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {veiculos.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Nenhum veículo cadastrado.</p>
+                  ) : selectedDay ? (
+                    veiculos.map(v => {
+                      const ags = ativos.filter(a => a.veiculo_id === v.id);
+                      return (
+                        <div key={v.id} className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="h-2.5 w-2.5 rounded-full" style={{ background: colorByVeiculo[v.id] }} />
+                            <span className="font-mono font-medium">{v.placa}</span>
+                            <span className="text-muted-foreground">{v.marca} {v.modelo}</span>
+                          </div>
+                          <HourTimeline agendamentos={ags} day={selectedDay} />
+                        </div>
+                      );
+                    })
+                  ) : null}
+                </CardContent>
+              </Card>
+
+              {/* Lista textual */}
+              <Card className="shadow-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Eventos do dia</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
                     <p className="text-muted-foreground">Carregando...</p>
                   ) : eventosNoDia.length === 0 ? (
-                    <p className="text-muted-foreground">Sem agendamentos neste dia.</p>
+                    <p className="text-muted-foreground">Sem agendamentos ativos neste dia.</p>
                   ) : (
                     <ul className="space-y-2">
                       {eventosNoDia.map(a => {
                         const v = veiculoMap[a.veiculo_id];
                         const m = motoristaMap[a.motorista_id];
-                        const color = colorByVeiculo[a.veiculo_id];
                         return (
                           <li key={a.id}>
                             <button
                               onClick={() => setPopupAg(a)}
                               className="flex w-full items-center gap-3 rounded-md border border-border bg-card p-3 text-left transition hover:bg-accent"
                             >
-                              <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: color }} />
+                              <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: colorByVeiculo[a.veiculo_id] }} />
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="font-mono font-medium">{v?.placa ?? "—"}</span>
@@ -318,22 +365,6 @@ useEffect(() => {
                   )}
                 </CardContent>
               </Card>
-
-              <Card className="shadow-card">
-                <CardHeader className="pb-2"><CardTitle className="text-base">Legenda por veículo</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {veiculos.map(v => (
-                      <div key={v.id} className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs">
-                        <span className="h-3 w-3 rounded-full" style={{ background: colorByVeiculo[v.id] }} />
-                        <span className="font-mono">{v.placa}</span>
-                        <span className="text-muted-foreground">{v.modelo}</span>
-                      </div>
-                    ))}
-                    {veiculos.length === 0 && <span className="text-muted-foreground text-sm">Nenhum veículo cadastrado.</span>}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </TabsContent>
@@ -349,21 +380,17 @@ useEffect(() => {
                 <p className="text-muted-foreground">Nenhum veículo cadastrado.</p>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {veiculosEfetivos.map(v => {
-                    const disponivel = v.status === "disponivel";
-                    const motivo =
-                      v.status === "manutencao" ? "Em manutenção" :
-                      v.status === "reservado" ? "Já reservado" :
-                      v.status === "inativo" ? "Veículo inativo" : "";
-                    const card = (
+                  {veiculos.map(v => {
+                    const selecionavel = isVeiculoSelecionavel(v);
+                    return (
                       <button
                         key={v.id}
                         type="button"
-                        disabled={!disponivel}
-                        onClick={() => disponivel && setPickedVeiculo(v)}
+                        disabled={!selecionavel}
+                        onClick={() => selecionavel && setPickedVeiculo(v)}
                         className={cn(
                           "group flex w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-left transition",
-                          disponivel ? "hover:border-primary hover:shadow-elevated cursor-pointer" : "cursor-not-allowed opacity-50 grayscale",
+                          selecionavel ? "hover:border-primary hover:shadow-elevated cursor-pointer" : "cursor-not-allowed opacity-50",
                         )}
                       >
                         <div className="flex h-32 items-center justify-center bg-muted">
@@ -376,18 +403,12 @@ useEffect(() => {
                         <div className="space-y-1 p-3">
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-mono font-semibold">{v.placa}</span>
-                            <StatusBadge status={v.status} />
+                            {!selecionavel && <StatusBadge status={v.status} />}
                           </div>
                           <p className="truncate text-sm text-muted-foreground">{v.marca} {v.modelo}</p>
                           <p className="text-xs text-muted-foreground">{fmtNumber(v.km_atual)} km</p>
                         </div>
                       </button>
-                    );
-                    return disponivel ? card : (
-                      <Tooltip key={v.id}>
-                        <TooltipTrigger asChild><div>{card}</div></TooltipTrigger>
-                        <TooltipContent>{motivo}</TooltipContent>
-                      </Tooltip>
                     );
                   })}
                 </div>
@@ -407,6 +428,9 @@ useEffect(() => {
                   {ativos.map(a => {
                     const v = veiculoMap[a.veiculo_id];
                     const m = motoristaMap[a.motorista_id];
+                    const ehDono = a.motorista_id === perfil?.motorista_id;
+                    const agora = new Date();
+                    const jaIniciou = new Date(a.data_saida) <= agora;
                     return (
                       <li key={a.id} className="flex flex-wrap items-center gap-3 p-4">
                         <span className="h-3 w-3 rounded-full" style={{ background: colorByVeiculo[a.veiculo_id] }} />
@@ -417,27 +441,27 @@ useEffect(() => {
                             <span>{m?.nome ?? "—"}</span>
                             <StatusBadge status={a.status} />
                           </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             {fmtDateTime(a.data_saida)} → {fmtDateTime(a.data_retorno_prevista)}
                             {a.destino && <> • {a.destino}</>}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-  {a.status === "agendado" && a.motorista_id === perfil?.motorista_id && (
-    <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
-      Iniciar uso
-    </Button>
-  )}
-  {a.status === "em_uso" && (isAdmin || a.motorista_id === perfil?.motorista_id) && (
-    <Button size="sm" className="bg-gradient-brand text-primary-foreground"
-      onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
-      <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
-    </Button>
-  )}
-  {a.status === "agendado" && a.motorista_id === perfil?.motorista_id && (
-    <Button size="sm" variant="ghost" onClick={() => cancelar(a)}>Cancelar</Button>
-  )}
-</div>
+                          {jaIniciou && ehDono && (
+                            <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
+                              Iniciar uso
+                            </Button>
+                          )}
+                          {(isAdmin || ehDono) && (
+                            <Button size="sm" className="bg-gradient-brand text-primary-foreground"
+                              onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
+                              <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
+                            </Button>
+                          )}
+                          {ehDono && (
+                            <Button size="sm" variant="ghost" onClick={() => cancelar(a)}>Cancelar</Button>
+                          )}
+                        </div>
                       </li>
                     );
                   })}
@@ -453,7 +477,7 @@ useEffect(() => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Detalhes do agendamento</DialogTitle>
-            <DialogDescription className="sr-only">Informações completas da reserva selecionada.</DialogDescription>
+            <DialogDescription className="sr-only">Informações da reserva.</DialogDescription>
           </DialogHeader>
           {popupAg && (() => {
             const v = veiculoMap[popupAg.veiculo_id];
@@ -476,12 +500,12 @@ useEffect(() => {
         </DialogContent>
       </Dialog>
 
-      {/* ============== Modal: novo agendamento (após pick) ============== */}
+      {/* ============== Modal: novo agendamento ============== */}
       <Dialog open={!!pickedVeiculo} onOpenChange={(o) => { if (!o) { setPickedVeiculo(null); setForm({}); } }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Novo agendamento — {pickedVeiculo?.placa}</DialogTitle>
-            <DialogDescription className="sr-only">Formulário para reservar o veículo selecionado.</DialogDescription>
+            <DialogDescription className="sr-only">Reservar o veículo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -502,6 +526,62 @@ useEffect(() => {
                 <Input type="datetime-local" value={form.data_retorno_prevista ?? ""} onChange={(e) => setForm(s => ({ ...s, data_retorno_prevista: e.target.value }))} />
               </div>
             </div>
+
+            {/* Timeline visual do dia escolhido */}
+            {pickedVeiculo && form.data_saida && (() => {
+              const day = new Date(form.data_saida);
+              if (isNaN(day.getTime())) return null;
+              day.setHours(0, 0, 0, 0);
+              const ags = ativos.filter(a => a.veiculo_id === pickedVeiculo.id);
+              return (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Disponibilidade em {day.toLocaleDateString("pt-BR")}
+                  </Label>
+                  <HourTimeline
+                    agendamentos={ags}
+                    day={day}
+                    highlight={form.data_retorno_prevista ? { inicio: form.data_saida, fim: form.data_retorno_prevista } : null}
+                  />
+                </div>
+              );
+            })()}
+
+            {/* Feedback de conflito */}
+            {conflito?.tipo === "overlap" && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+                <div className="flex items-start gap-2 text-sm">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
+                  <div>
+                    <p className="font-medium text-destructive">⚠️ Esse horário já está reservado para este veículo.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Conflita com: {fmtDateTime(conflito.agendamento.data_saida)} → {fmtDateTime(conflito.agendamento.data_retorno_prevista)}
+                    </p>
+                  </div>
+                </div>
+                {sugestoes.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium inline-flex items-center gap-1"><Lightbulb className="h-3 w-3" />Sugestões disponíveis:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {sugestoes.map((s, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, data_saida: toDatetimeLocal(s.inicio), data_retorno_prevista: toDatetimeLocal(s.fim) }))}
+                          className="rounded-md border border-success/40 bg-success/10 px-2 py-1 text-xs text-success hover:bg-success/20 transition"
+                        >
+                          ✔ {fmtHHmm(s.inicio)} → {fmtHHmm(s.fim)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {conflito?.tipo === "ordem" && (
+              <p className="text-xs text-destructive">A data de retorno deve ser posterior à de saída.</p>
+            )}
+
             <div className="space-y-1.5">
               <Label>Destino</Label>
               <Input value={form.destino ?? ""} onChange={(e) => setForm(s => ({ ...s, destino: e.target.value }))} />
@@ -514,7 +594,11 @@ useEffect(() => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setPickedVeiculo(null); setForm({}); }}>Cancelar</Button>
-            <Button className="bg-gradient-brand text-primary-foreground" onClick={confirmarAgendamento}>
+            <Button
+              className="bg-gradient-brand text-primary-foreground"
+              disabled={!!conflito}
+              onClick={confirmarAgendamento}
+            >
               <CheckCircle2 className="mr-1 h-4 w-4" />Confirmar agendamento
             </Button>
           </DialogFooter>
@@ -526,7 +610,7 @@ useEffect(() => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Registrar devolução</DialogTitle>
-            <DialogDescription className="sr-only">Confirme os dados de devolução do veículo.</DialogDescription>
+            <DialogDescription className="sr-only">Confirme os dados de devolução.</DialogDescription>
           </DialogHeader>
           {returning && (
             <div className="space-y-3">
@@ -559,8 +643,8 @@ useEffect(() => {
                 <Label>Observações</Label>
                 <Textarea value={retForm.observacoes ?? ""} onChange={(e) => setRetForm(s => ({ ...s, observacoes: e.target.value }))} />
               </div>
-              <div className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
-                ⚠️ Após a devolução, o checklist pós-uso é obrigatório antes de novas ações no sistema.
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
+                ⚠️ Após a devolução, o checklist pós-uso é obrigatório antes de novas ações.
               </div>
             </div>
           )}
