@@ -386,7 +386,7 @@ function UserWizard({
           if (promoErr) throw new Error("Erro ao promover admin: " + promoErr.message);
 
           // Atualiza dados do motorista criado pela função com os dados do formulário
-          const { data: motCreated, error: motFetchErr } = await supabase
+          const { data: motCreated, error: motFetchErr } = await (supabase as any)
             .from("motoristas")
             .select("id")
             .eq("user_id", userId)
