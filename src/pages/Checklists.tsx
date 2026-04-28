@@ -136,6 +136,7 @@ export default function Checklists() {
       setForm(initial);
       setOpen(false);
       await reload();
+      await refreshPendentes();
     } finally { setSaving(false); }
   };
 
