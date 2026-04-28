@@ -76,5 +76,22 @@ export function useChecklistPendente() {
     }
   }, [check, isAdmin]);
 
+  useEffect(() => {
+    const refresh = () => { void check(); };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+
+    window.addEventListener("checklist-pendente:refresh", refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener("checklist-pendente:refresh", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [check]);
+
   return { pendentes, loading, refresh: check };
 }

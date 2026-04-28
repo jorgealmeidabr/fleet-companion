@@ -85,6 +85,9 @@ export default function Checklists() {
   const [form, setForm] = useState(initial);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const pendenteDoVeiculo = form.veiculo_id
+    ? pendentes.find(p => p.agendamento.veiculo_id === form.veiculo_id)
+    : null;
 
   const set = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
 
@@ -122,10 +125,15 @@ export default function Checklists() {
     try {
       // Persistimos o nível como prefixo das observações para não depender de migração.
       const obsFinal = `[Nível combustível: ${form.nivel_combustivel}]${form.observacoes ? " " + form.observacoes : ""}`;
+      const checklistMotoristaId = perfil?.motorista_id ?? form.motorista_id ?? null;
+      const checklistData = pendenteDoVeiculo?.agendamento.data_retorno_real
+        ? new Date(pendenteDoVeiculo.agendamento.data_retorno_real).toISOString().slice(0, 10)
+        : form.data;
+
       await insert({
         veiculo_id: form.veiculo_id,
-        motorista_id: perfil?.motorista_id ?? form.motorista_id ?? null,
-        data: form.data,
+        motorista_id: checklistMotoristaId,
+        data: checklistData,
         pneus_ok: form.pneus_ok,
         luzes_ok: form.luzes_ok,
         combustivel_ok,
@@ -139,6 +147,7 @@ export default function Checklists() {
       setOpen(false);
       await reload();
       await refreshPendentes();
+      window.dispatchEvent(new Event("checklist-pendente:refresh"));
     } finally { setSaving(false); }
   };
 
