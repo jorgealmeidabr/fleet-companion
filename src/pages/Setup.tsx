@@ -6,7 +6,7 @@ export default function Setup() {
     <div className="min-h-screen bg-gradient-dark px-4 py-12 text-foreground">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 flex items-center gap-3 text-primary-foreground">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-brand shadow-elevated">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-brand shadow-elevated bg-warning">
             <Truck className="h-6 w-6" />
           </div>
           <div>
