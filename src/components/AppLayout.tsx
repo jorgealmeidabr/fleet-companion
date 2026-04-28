@@ -93,58 +93,43 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Operação</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visible.map(item => {
-                const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
-                const badgeValue =
-                  item.url === "/alertas" ? alertCount :
-                  item.url === "/solicitacoes" ? requestCount : 0;
-                const badgeVariant: "destructive" | "default" =
-                  item.url === "/alertas" ? "destructive" : "default";
-                const showBadge = badgeValue > 0;
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={active}>
-                      <NavLink to={item.url} end={item.url === "/"} className="relative">
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span className="flex-1">{item.title}</span>}
-                        {showBadge && (
-                          <Badge variant={badgeVariant} className={cn(
-                            "h-5 min-w-[20px] justify-center px-1.5 text-[10px]",
-                            item.url === "/solicitacoes" && "bg-info text-info-foreground hover:bg-info",
-                            collapsed && "absolute right-0 top-0 -translate-y-1 translate-x-1",
-                          )}>
-                            {badgeValue}
-                          </Badge>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Conta</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location.pathname === "/meu-perfil"}>
-                  <NavLink to="/meu-perfil">
-                    <UserCircle2 className="h-4 w-4" />
-                    {!collapsed && <span>Meu perfil</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        {visibleGroups.map(group => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map(item => {
+                  const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
+                  const badgeValue =
+                    item.url === "/alertas" ? alertCount :
+                    item.url === "/solicitacoes" ? requestCount : 0;
+                  const badgeVariant: "destructive" | "default" =
+                    item.url === "/alertas" ? "destructive" : "default";
+                  const showBadge = badgeValue > 0;
+                  return (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild isActive={active}>
+                        <NavLink to={item.url} end={item.url === "/"} className="relative">
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span className="flex-1">{item.title}</span>}
+                          {showBadge && (
+                            <Badge variant={badgeVariant} className={cn(
+                              "h-5 min-w-[20px] justify-center px-1.5 text-[10px]",
+                              item.url === "/solicitacoes" && "bg-info text-info-foreground hover:bg-info",
+                              collapsed && "absolute right-0 top-0 -translate-y-1 translate-x-1",
+                            )}>
+                              {badgeValue}
+                            </Badge>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       <SidebarFooter className="border-t border-sidebar-border">
         {!collapsed && (
           <div className="px-2 py-1 text-[10px] text-sidebar-foreground/50">
