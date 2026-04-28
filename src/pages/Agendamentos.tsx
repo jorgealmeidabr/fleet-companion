@@ -300,8 +300,9 @@ export default function Agendamentos() {
     await update(a.id, { status: "cancelado" } as Partial<Agendamento>);
   };
 
-  // Veículo é selecionável se NÃO está em manutencao/inativo (regra mantida).
-  const isVeiculoSelecionavel = (v: Veiculo) => v.status !== "manutencao" && v.status !== "inativo";
+  // Veículo é selecionável se NÃO está em manutencao/inativo E o usuário não tem checklist pendente.
+  const isVeiculoSelecionavel = (v: Veiculo) =>
+    !temPendencia && v.status !== "manutencao" && v.status !== "inativo";
 
   return (
     <>
