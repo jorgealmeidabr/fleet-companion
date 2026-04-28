@@ -80,6 +80,25 @@ export default function Agendamentos() {
       // 3 bipes com ~300ms de intervalo (0ms, 300ms, 600ms)
       beep(0); beep(0.3); beep(0.6);
       setTimeout(() => ctx.close().catch(() => {}), 1200);
+
+      // Após os bipes (~900ms), reproduz mensagem de voz (TTS)
+      setTimeout(() => {
+        try {
+          if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(
+            "Finalize o checklist para concluir o processo de devolução do veículo."
+          );
+          utter.lang = "pt-BR";
+          utter.rate = 1;
+          utter.pitch = 1;
+          utter.volume = 1;
+          const voices = window.speechSynthesis.getVoices();
+          const ptVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("pt"));
+          if (ptVoice) utter.voice = ptVoice;
+          window.speechSynthesis.speak(utter);
+        } catch { /* ignora */ }
+      }, 950);
     } catch { /* ignora */ }
   };
 
