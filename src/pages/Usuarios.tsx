@@ -268,13 +268,9 @@ function UserWizard({
   // Passo 2: permissões
   const [perms, setPerms] = useState<Permissoes>(PERMISSOES_DEFAULT);
 
-  // Detecção de motorista existente
-  const [existingMot, setExistingMot] = useState<Motorista | null>(null);
-  const [linkExisting, setLinkExisting] = useState(false);
-
   useEffect(() => {
     if (!open) return;
-    setStep(1); setSaving(false); setExistingMot(null); setLinkExisting(false);
+    setStep(1); setSaving(false);
     if (editing) {
       const m = editing.motorista;
       setNome(m?.nome ?? ""); setEmail(m?.email ?? ""); setTelefone(m?.telefone ?? "");
@@ -287,28 +283,6 @@ function UserWizard({
       setPerms(PERMISSOES_DEFAULT); setSenha(generatePassword());
     }
   }, [open, editing]);
-
-  // Verifica motorista existente por email (apenas no modo criar)
-  useEffect(() => {
-    if (editing) return;
-    const e = email.trim().toLowerCase();
-    if (!e || validarEmail(e)) { setExistingMot(null); return; }
-    const t = setTimeout(async () => {
-      const { data } = await supabase.from("motoristas").select("*").eq("email", e).limit(1);
-      const found = ((data ?? []) as Motorista[])[0];
-      if (found) {
-        setExistingMot(found);
-        // pré-preenche
-        if (!nome) setNome(found.nome);
-        if (!cargo) setCargo(found.cargo ?? "");
-        if (!telefone) setTelefone(found.telefone ?? "");
-        if (!cnhNum) setCnhNum(found.cnh_numero);
-        if (!cnhCat) setCnhCat(found.cnh_categoria);
-        if (!cnhVal) setCnhVal(found.cnh_validade);
-      } else setExistingMot(null);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [email, editing]);
 
   const passo1Valido = (): string | null => {
     if (nome.trim().length < 2) return "Informe o nome";
@@ -420,16 +394,6 @@ function UserWizard({
               <Field label="Nome completo *"><Input value={nome} onChange={e => setNome(e.target.value)} /></Field>
               <Field label="E-mail (login) *"><Input type="email" disabled={!!editing} value={email} onChange={e => setEmail(e.target.value)} /></Field>
             </div>
-            {existingMot && !editing && (
-              <div className="rounded-md border border-info/30 bg-info/10 p-3 text-sm">
-                <p className="font-medium text-info">E-mail já cadastrado em motoristas: <span className="font-bold">{existingMot.nome}</span>.</p>
-                <p className="mt-1 text-xs text-muted-foreground">Deseja vincular este cadastro existente?</p>
-                <div className="mt-2 flex gap-2">
-                  <Button size="sm" variant={linkExisting ? "default" : "outline"} onClick={() => setLinkExisting(true)}>Sim, vincular</Button>
-                  <Button size="sm" variant={!linkExisting ? "default" : "outline"} onClick={() => setLinkExisting(false)}>Não, criar novo</Button>
-                </div>
-              </div>
-            )}
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Telefone"><Input value={telefone} onChange={e => setTelefone(formatarTelefone(e.target.value))} placeholder="(00) 00000-0000" /></Field>
               <Field label="Cargo *"><Input value={cargo} onChange={e => setCargo(e.target.value)} placeholder="Motorista, Técnico, Supervisor..." /></Field>
