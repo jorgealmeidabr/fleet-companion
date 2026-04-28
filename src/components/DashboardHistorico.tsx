@@ -138,7 +138,7 @@ export function DashboardHistorico() {
               const Icon = ICONS[it.tipo];
               return (
                 <li key={it.id} className="flex items-start gap-3 p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-secondary-foreground bg-amber-500">
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">

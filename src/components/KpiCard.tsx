@@ -13,7 +13,7 @@ interface KpiCardProps {
 
 const toneStyles: Record<string, string> = {
   default: "bg-muted/50 text-muted-foreground",
-  success: "bg-success/10 text-success",
+  success: "text-secondary-foreground bg-amber-500",
   warning: "bg-warning/10 text-warning",
   destructive: "bg-destructive/10 text-destructive",
   info: "bg-info/10 text-info",
