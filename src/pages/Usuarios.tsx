@@ -119,7 +119,7 @@ export default function Usuarios() {
         title="Usuários"
         subtitle="Gerencie quem acessa o sistema e o que cada pessoa pode ver"
         actions={
-          <Button className="bg-gradient-brand text-primary-foreground" onClick={() => { setEditing(null); setOpenModal(true); }}>
+          <Button variant="brand" onClick={() => { setEditing(null); setOpenModal(true); }}>
             <Plus className="mr-1 h-4 w-4" />Novo usuário
           </Button>
         }
