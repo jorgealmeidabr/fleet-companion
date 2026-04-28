@@ -59,9 +59,6 @@ export default function Checklists() {
   const { toast } = useToast();
   const { pendentes, refresh: refreshPendentes } = useChecklistPendente();
   const { perfil } = useAuth();
-  const pendenteDoVeiculo = form.veiculo_id
-    ? pendentes.find(p => p.agendamento.veiculo_id === form.veiculo_id)
-    : null;
 
   useEffect(() => {
     supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[]));
@@ -88,6 +85,9 @@ export default function Checklists() {
   const [form, setForm] = useState(initial);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const pendenteDoVeiculo = form.veiculo_id
+    ? pendentes.find(p => p.agendamento.veiculo_id === form.veiculo_id)
+    : null;
 
   const set = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
 
