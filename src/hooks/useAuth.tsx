@@ -115,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       isMotorista: role === "motorista",
       mustChangePassword: !!perfil?.must_change_password,
+      profileStatus,
       refreshPerfil, signIn, signUp, signOut,
     }}>
       {children}
