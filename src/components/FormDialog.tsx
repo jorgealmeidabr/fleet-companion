@@ -147,7 +147,7 @@ export function FormDialog<T extends Record<string, any>>({
           ))}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving || !!uploading} className="bg-gradient-brand text-primary-foreground">{saving ? "Salvando..." : submitLabel}</Button>
+            <Button type="submit" disabled={saving || !!uploading} variant="brand">{saving ? "Salvando..." : submitLabel}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
