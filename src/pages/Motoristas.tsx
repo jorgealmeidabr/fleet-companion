@@ -63,7 +63,7 @@ export default function Motoristas() {
         actions={isAdmin && (
           <FormDialog<Motorista>
             title="Novo motorista" fields={fields} onSubmit={insert}
-            trigger={<Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Novo motorista</Button>}
+            trigger={<Button variant="brand"><Plus className="mr-1 h-4 w-4" />Novo motorista</Button>}
           />
         )}
       />
