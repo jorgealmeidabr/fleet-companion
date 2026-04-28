@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
     const roles = ((data ?? []) as Array<{ role: string }>).map(r => r.role);
     if (roles.includes("admin")) { setRole("admin"); setPerfil(null); }
-    else if (roles.includes("motorista") || roles.includes("usuario")) { setRole("motorista"); setPerfil(null); }
+    else if (roles.includes("usuario") || roles.includes("motorista")) { setRole("motorista"); setPerfil(null); }
     else { setRole(null); setPerfil(null); }
   }, []);
 
