@@ -98,7 +98,7 @@ export default function Manutencoes() {
             {isAdmin && (
               <FormDialog<Manutencao>
                 title="Nova manutenção" fields={fields} onSubmit={insert}
-                trigger={<Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Nova manutenção</Button>}
+                trigger={<Button variant="brand"><Plus className="mr-1 h-4 w-4" />Nova manutenção</Button>}
               />
             )}
           </div>
