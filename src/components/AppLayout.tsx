@@ -73,7 +73,9 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
   const collapsed = state === "collapsed";
 
   // CRÍTICO: itens sem acesso NÃO existem no DOM
-  const visible = items.filter(i => !i.perm || canSee(i.perm));
+  const visibleGroups = groups
+    .map(g => ({ ...g, items: g.items.filter(i => !i.perm || canSee(i.perm)) }))
+    .filter(g => g.items.length > 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
