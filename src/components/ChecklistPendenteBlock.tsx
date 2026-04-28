@@ -60,7 +60,7 @@ export function ChecklistPendenteBlock() {
 
         <DialogFooter>
           <Button
-            className="w-full bg-gradient-brand text-primary-foreground"
+            variant="brand" className="w-full"
             onClick={() => navigate("/checklists")}
           >
             <ClipboardCheck className="mr-2 h-4 w-4" />
