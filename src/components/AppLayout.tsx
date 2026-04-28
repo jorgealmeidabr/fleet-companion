@@ -153,6 +153,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { counts } = useAlerts();
   const alertCount = isAdmin ? counts.critico + counts.atencao : 0;
   const requestCount = useRequestBadge();
+  const { idle, wake } = useIdle(40000, !!user);
 
   return (
     <SidebarProvider>
