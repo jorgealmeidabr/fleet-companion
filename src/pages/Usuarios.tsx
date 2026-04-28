@@ -372,7 +372,6 @@ function UserWizard({
             cnh_validade: cnhVal || null,
             tipo_conta: tipoConta,
             permissoes: finalPerms,
-            link_motorista_id: tipoConta === "usuario" && linkExisting && existingMot ? existingMot.id : null,
           },
         });
         if (createErr) throw new Error(createErr.message);
