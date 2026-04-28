@@ -18,6 +18,9 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { cn } from "@/lib/utils";
+import { useChecklistPendente } from "@/hooks/useChecklistPendente";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 // Itens visuais (apenas UI). Apenas os que correspondem a colunas no banco são persistidos diretamente.
 const ITEMS: { key: keyof Pick<Checklist, "pneus_ok" | "luzes_ok">; label: string; hint: string }[] = [
