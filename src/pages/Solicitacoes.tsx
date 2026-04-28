@@ -358,7 +358,7 @@ export default function Solicitacoes() {
               <Button
                 onClick={submit}
                 disabled={submitting}
-                className="bg-gradient-brand text-primary-foreground"
+                variant="brand"
               >
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Enviar solicitação
