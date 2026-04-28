@@ -16,7 +16,7 @@ const toneStyles: Record<string, string> = {
   success: "text-secondary-foreground bg-amber-500",
   warning: "text-primary-foreground bg-yellow-500",
   destructive: "bg-amber-500 text-amber-50",
-  info: "bg-info/10 text-info",
+  info: "text-primary-foreground bg-yellow-500",
   brand: "bg-gradient-brand text-primary-foreground bg-warning",
 };
 
