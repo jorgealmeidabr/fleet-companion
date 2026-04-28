@@ -102,14 +102,14 @@ Deno.serve(async (req) => {
     tipo_conta, permissoes,
   } = body;
 
-  if (!email || !senha || !nome || !cargo || !tipo_conta) {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanNome = nome.trim();
+  const cleanCargo = cargo.trim();
+  if (!cleanEmail || !senha || !cleanNome || !cleanCargo || !tipo_conta) {
     return json({ error: "Campos obrigatórios ausentes (email, senha, nome, cargo, tipo_conta)" }, 400);
   }
   if (senha.length < 8) return json({ error: "Senha deve ter ao menos 8 caracteres" }, 400);
   if (!["admin", "usuario"].includes(tipo_conta)) return json({ error: "tipo_conta inválido" }, 400);
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanNome = nome.trim();
-  const cleanCargo = cargo.trim();
 
   // 3. Criar usuário no Auth com privilégios administrativos
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
