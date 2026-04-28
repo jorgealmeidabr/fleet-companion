@@ -17,7 +17,7 @@ const toneStyles: Record<string, string> = {
   warning: "bg-warning/10 text-warning",
   destructive: "bg-destructive/10 text-destructive",
   info: "bg-info/10 text-info",
-  brand: "bg-gradient-brand text-primary-foreground",
+  brand: "bg-gradient-brand text-primary-foreground bg-warning",
 };
 
 export function KpiCard({ label, value, hint, icon: Icon, tone = "default", trend }: KpiCardProps) {
