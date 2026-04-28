@@ -160,7 +160,7 @@ export function IdleScreen({ onExit }: IdleScreenProps) {
         <div className="idle-content">
           <img src={brqLogo} alt="BRQ Frota Interna" className="idle-logo" />
           <p className="idle-tagline">Nós alimentamos o mundo!</p>
-          <div className="idle-hint">Toque ou mova o mouse para continuar</div>
+          <div className="idle-hint">Clique na tela para continuar</div>
         </div>
       </div>
     </>
