@@ -16,6 +16,8 @@ import { useRequestBadge } from "@/hooks/useRequestBadge";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { ChecklistPendenteBlock } from "@/components/ChecklistPendenteBlock";
+import { IdleScreen } from "@/components/IdleScreen";
+import { useIdle } from "@/hooks/useIdle";
 
 import { cn } from "@/lib/utils";
 import type { ModuloPermissao } from "@/lib/types";
