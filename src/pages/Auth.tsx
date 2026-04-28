@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { validarEmail } from "@/lib/validators";
-import brqLogo from "@/assets/brq-logo-frota.png";
+import brqLogo from "@/assets/brq-logo-frota.jpg";
 
 export default function Auth() {
   const { user, signIn } = useAuth();
