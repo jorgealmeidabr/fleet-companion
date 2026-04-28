@@ -180,20 +180,32 @@ Deno.serve(async (req) => {
     return json({ user_id: userId, tipo_conta: "admin" });
   }
 
-  // 6. Motorista: sempre insere um motorista explicitamente e cria usuarios_perfis explicitamente.
-  const { data: motorista, error: motoristaErr } = await admin
+  // 6. Motorista: garante motorista explicitamente e cria usuarios_perfis explicitamente.
+  // Em retentativas com e-mail já existente, reutiliza o motorista já vinculado ao Auth user.
+  const { data: existingMotorista, error: existingMotoristaErr } = await admin
     .from("motoristas")
-    .insert({
-      user_id: userId,
-      nome: cleanNome,
-      email: cleanEmail,
-      telefone: telefone || null,
-      cargo: cleanCargo || null,
-      cnh_numero: cnh_numero || "00000000000",
-      cnh_categoria: cnh_categoria || "B",
-      cnh_validade: cnh_validade || fallbackCnhValidade(),
-      status: "ativo",
-    })
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (existingMotoristaErr) return rollback("Erro ao verificar motorista existente: " + existingMotoristaErr.message);
+
+  const motoristaPayload = {
+    user_id: userId,
+    nome: cleanNome,
+    email: cleanEmail,
+    telefone: telefone || null,
+    cargo: cleanCargo || null,
+    cnh_numero: cnh_numero || "00000000000",
+    cnh_categoria: cnh_categoria || "B",
+    cnh_validade: cnh_validade || fallbackCnhValidade(),
+    status: "ativo",
+  };
+
+  const { data: motorista, error: motoristaErr } = existingMotorista
+    ? await admin.from("motoristas").update(motoristaPayload).eq("id", existingMotorista.id).select("id").single()
+    : await admin
+    .from("motoristas")
+    .insert(motoristaPayload)
     .select("id")
     .single();
   if (motoristaErr || !motorista) return rollback("Erro ao criar motorista: " + (motoristaErr?.message ?? "desconhecido"));
