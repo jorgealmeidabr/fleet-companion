@@ -71,7 +71,7 @@ export default function Checklists() {
   // ----- form state -----
   const initial = {
     veiculo_id: "",
-    motorista_id: "",
+    motorista_id: perfil?.motorista_id ?? "",
     data: new Date().toISOString().slice(0, 10),
     pneus_ok: true,
     luzes_ok: true,
