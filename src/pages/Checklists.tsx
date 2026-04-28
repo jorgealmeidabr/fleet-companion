@@ -250,7 +250,7 @@ export default function Checklists() {
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                  <Button type="submit" disabled={saving || uploading} className="bg-gradient-brand text-primary-foreground">{saving ? "Salvando..." : "Salvar checklist"}</Button>
+                  <Button type="submit" disabled={saving || uploading} variant="brand">{saving ? "Salvando..." : "Salvar checklist"}</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
