@@ -26,7 +26,6 @@ interface Payload {
   cnh_validade?: string | null;
   tipo_conta: "admin" | "usuario";
   permissoes: Record<string, boolean>;
-  link_motorista_id?: string | null;
 }
 
 const fallbackCnhValidade = () => {
@@ -100,7 +99,7 @@ Deno.serve(async (req) => {
   const {
     email, senha, nome, telefone, cargo,
     cnh_numero, cnh_categoria, cnh_validade,
-    tipo_conta, permissoes, link_motorista_id,
+    tipo_conta, permissoes,
   } = body;
 
   if (!email || !senha || !nome || !cargo || !tipo_conta) {
@@ -141,34 +140,24 @@ Deno.serve(async (req) => {
     return json({ user_id: userId, tipo_conta: "admin" });
   }
 
-  // 6. Motorista: cria/vincula motorista explicitamente e cria usuarios_perfis explicitamente.
-  let motoristaId: string;
-  if (link_motorista_id) {
-    const { error: linkErr } = await admin
-      .from("motoristas")
-      .update({ user_id: userId, nome, email, telefone: telefone || null, cargo: cargo || null })
-      .eq("id", link_motorista_id);
-    if (linkErr) return rollback("Erro ao vincular motorista: " + linkErr.message);
-    motoristaId = link_motorista_id;
-  } else {
-    const { data: motorista, error: motoristaErr } = await admin
-      .from("motoristas")
-      .insert({
-        user_id: userId,
-        nome,
-        email,
-        telefone: telefone || null,
-        cargo: cargo || null,
-        cnh_numero: cnh_numero || "00000000000",
-        cnh_categoria: cnh_categoria || "B",
-        cnh_validade: cnh_validade || fallbackCnhValidade(),
-        status: "ativo",
-      })
-      .select("id")
-      .single();
-    if (motoristaErr || !motorista) return rollback("Erro ao criar motorista: " + (motoristaErr?.message ?? "desconhecido"));
-    motoristaId = motorista.id;
-  }
+  // 6. Motorista: sempre insere um motorista explicitamente e cria usuarios_perfis explicitamente.
+  const { data: motorista, error: motoristaErr } = await admin
+    .from("motoristas")
+    .insert({
+      user_id: userId,
+      nome,
+      email,
+      telefone: telefone || null,
+      cargo: cargo || null,
+      cnh_numero: cnh_numero || "00000000000",
+      cnh_categoria: cnh_categoria || "B",
+      cnh_validade: cnh_validade || fallbackCnhValidade(),
+      status: "ativo",
+    })
+    .select("id")
+    .single();
+  if (motoristaErr || !motorista) return rollback("Erro ao criar motorista: " + (motoristaErr?.message ?? "desconhecido"));
+  const motoristaId = motorista.id;
 
   const { error: perfilErr } = await admin.from("usuarios_perfis").upsert({
     user_id: userId,
