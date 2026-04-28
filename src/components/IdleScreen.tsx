@@ -13,9 +13,7 @@ interface IdleScreenProps {
 export function IdleScreen({ onExit }: IdleScreenProps) {
   useEffect(() => {
     const handler = () => onExit();
-    const events: (keyof WindowEventMap)[] = [
-      "mousemove", "mousedown", "keydown", "touchstart", "wheel", "pointerdown",
-    ];
+    const events: (keyof WindowEventMap)[] = ["mousedown", "touchstart", "pointerdown"];
     events.forEach((ev) => window.addEventListener(ev, handler, { passive: true }));
     return () => {
       events.forEach((ev) => window.removeEventListener(ev, handler));
@@ -162,7 +160,7 @@ export function IdleScreen({ onExit }: IdleScreenProps) {
         <div className="idle-content">
           <img src={brqLogo} alt="BRQ Frota Interna" className="idle-logo" />
           <p className="idle-tagline">Nós alimentamos o mundo!</p>
-          <div className="idle-hint">Toque ou mova o mouse para continuar</div>
+          <div className="idle-hint">Clique na tela para continuar</div>
         </div>
       </div>
     </>
