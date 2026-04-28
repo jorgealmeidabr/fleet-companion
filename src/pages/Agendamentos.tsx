@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
+import { useChecklistPendente } from "@/hooks/useChecklistPendente";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
