@@ -20,6 +20,7 @@ import { fmtDateTime, fmtNumber } from "@/lib/format";
 import type { Agendamento, Veiculo, Motorista } from "@/lib/types";
 import { Car, CheckCircle2, MapPin, RotateCcw, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -449,10 +450,11 @@ useEffect(() => {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>Motorista *</Label>
-              <Select value={form.motorista_id ?? ""} onValueChange={(v) => setForm(s => ({ ...s, motorista_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>{motoristas.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
-              </Select>
+              <MotoristaAutocomplete
+                motoristas={motoristas}
+                value={form.motorista_id ?? ""}
+                onChange={(id) => setForm(s => ({ ...s, motorista_id: id }))}
+              />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
