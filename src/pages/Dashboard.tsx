@@ -139,7 +139,7 @@ export default function Dashboard() {
   const pieData = [
     { name: "Disponível", value: disponiveis, color: "hsl(142 70% 42%)" },
     { name: "Manutenção", value: emManutencao, color: "hsl(32 95% 50%)" },
-    { name: "Reservado", value: veiculos.filter(v => v.status === "reservado").length, color: "hsl(210 90% 55%)" },
+    { name: "Reservado", value: veiculos.filter(v => statusEfetivo(v) === "reservado").length, color: "hsl(210 90% 55%)" },
     { name: "Inativo", value: inativos, color: "hsl(0 75% 55%)" },
   ];
 
