@@ -56,16 +56,18 @@ Deno.serve(async (req) => {
   const token = authHeader.slice("Bearer ".length).trim();
   if (!token) return json({ error: "Token ausente" }, 401);
 
-  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: authHeader } },
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "GET",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+    },
   });
-
-  const { data: caller, error: callerErr } = await authClient.auth.getUser(token);
-  if (callerErr || !caller?.user?.id) {
+  const caller = await userRes.json().catch(() => null) as { id?: string; error?: string; msg?: string } | null;
+  if (!userRes.ok || !caller?.id) {
     return json({ error: "Não autenticado" }, 401);
   }
-  const callerUserId = caller.user.id;
+  const callerUserId = caller.id;
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
