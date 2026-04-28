@@ -143,6 +143,18 @@ export default function Checklists() {
 
   return (
     <>
+      {pendentes.length > 0 && (
+        <Alert variant="destructive" className="mb-4 border-warning bg-warning/10 text-warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Devolução pendente</AlertTitle>
+          <AlertDescription>
+            Finalize o checklist para concluir o processo de devolução do Veiculo.
+            {pendentes.length === 1
+              ? ` Veículo: ${pendentes[0].veiculo_placa} — ${pendentes[0].veiculo_modelo}`
+              : ` (${pendentes.length} veículos pendentes)`}
+          </AlertDescription>
+        </Alert>
+      )}
       <PageHeader
         title="Checklists"
         subtitle="Inspeções pré-uso dos veículos"
