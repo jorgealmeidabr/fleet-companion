@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { uploadFiles } from "@/lib/storage";
 import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
+import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -596,6 +597,7 @@ export default function Agendamentos() {
             <DialogDescription className="sr-only">Reservar o veículo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {pickedVeiculo && <VeiculoChecklistStatus veiculoId={pickedVeiculo.id} />}
             <div className="space-y-1.5">
               <Label>Motorista *</Label>
               <MotoristaAutocomplete
