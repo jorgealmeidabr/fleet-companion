@@ -13,8 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, supabaseAnonKey, supabaseUrl } from "@/lib/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtDateTime } from "@/lib/format";
 import { validarEmail, validarCNH, formatarCNH, validarTelefone, formatarTelefone } from "@/lib/validators";
@@ -359,78 +358,24 @@ function UserWizard({
         }).eq("id", editing.id);
         toast({ title: "Usuário atualizado" });
       } else {
-        // === Modo criar: cria Auth em cliente isolado e depois cadastra motorista + perfil ===
+        // === Modo criar: Edge Function usa auth.admin.createUser + inserts explícitos ===
         const finalPerms = tipoConta === "admin" ? PERMISSOES_TUDO : perms;
-        const linkId = linkExisting && existingMot ? existingMot.id : null;
-
-        const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-        });
-        const { data: created, error: signUpErr } = await authClient.auth.signUp({
-          email,
-          password: senha,
-          options: { data: { nome, cargo } },
-        });
-        if (signUpErr) throw new Error(signUpErr.message);
-        const userId = created.user?.id;
-        if (!userId) throw new Error("Não foi possível criar o login do usuário.");
-
-        // Pequena espera para garantir que o trigger handle_new_user já criou profile/role
-        await new Promise((r) => setTimeout(r, 400));
-
-        // Garante registro em public.profiles caso o trigger tenha falhado silenciosamente
-        const { error: profileErr } = await (supabase as any)
-          .from("profiles")
-          .upsert({ id: userId, nome, email }, { onConflict: "id" });
-        if (profileErr) {
-          console.warn("Falha ao garantir profile:", profileErr.message);
-        }
-
-        let motoristaId = linkId;
-
-        if (tipoConta === "admin" && !linkId) {
-          // === ADMIN: usa a função promote_to_admin que cria motorista + perfil de admin ===
-          const { error: promoErr } = await (supabase as any).rpc("promote_to_admin", { _email: email });
-          if (promoErr) throw new Error("Erro ao promover admin: " + promoErr.message);
-          // Pronto. Não buscamos/atualizamos motorista nem perfil — a função já cuida de tudo.
-        } else {
-          // === USUÁRIO comum (ou admin vinculado a motorista existente) ===
-          if (motoristaId) {
-            const { error } = await (supabase as any)
-              .from("motoristas")
-              .update({ user_id: userId, nome, email, telefone: telefone || null, cargo: cargo || null })
-              .eq("id", motoristaId);
-            if (error) throw new Error(error.message);
-          } else {
-            const { data: motorista, error } = await (supabase as any)
-              .from("motoristas")
-              .insert({
-                nome,
-                email,
-                telefone: telefone || null,
-                cargo: cargo || null,
-                cnh_numero: cnhNum || "00000000000",
-                cnh_categoria: cnhCat || "B",
-                cnh_validade: cnhVal || new Date(Date.now() + 5*365*86400000).toISOString().slice(0,10),
-                user_id: userId,
-                status: "ativo",
-              })
-              .select("id")
-              .single();
-            if (error) throw new Error(error.message);
-            motoristaId = motorista.id;
-          }
-
-          const { error: perfilErr } = await (supabase as any).from("usuarios_perfis").insert({
-            user_id: userId,
-            motorista_id: motoristaId,
+        const { error: createErr } = await (supabase as any).functions.invoke("admin-create-user", {
+          body: {
+            email: email.trim().toLowerCase(),
+            senha,
+            nome: nome.trim(),
+            telefone: telefone || null,
+            cargo: cargo.trim(),
+            cnh_numero: cnhNum || null,
+            cnh_categoria: cnhCat || "B",
+            cnh_validade: cnhVal || null,
             tipo_conta: tipoConta,
             permissoes: finalPerms,
-            ativo: true,
-            must_change_password: true,
-          });
-          if (perfilErr) throw new Error(perfilErr.message);
-        }
+            link_motorista_id: tipoConta === "usuario" && linkExisting && existingMot ? existingMot.id : null,
+          },
+        });
+        if (createErr) throw new Error(createErr.message);
 
         toast({
           title: "Usuário criado",
