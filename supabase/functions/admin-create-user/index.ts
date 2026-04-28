@@ -40,6 +40,23 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const isAlreadyRegistered = (message?: string | null) =>
+  String(message ?? "").toLowerCase().includes("already") ||
+  String(message ?? "").toLowerCase().includes("registered");
+
+const findUserByEmail = async (admin: any, email: string) => {
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    const found = data?.users?.find((u: { email?: string }) =>
+      String(u.email ?? "").toLowerCase() === email,
+    );
+    if (found) return found;
+    if (!data?.users || data.users.length < 1000) break;
+  }
+  return null;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -111,7 +128,10 @@ Deno.serve(async (req) => {
   if (senha.length < 8) return json({ error: "Senha deve ter ao menos 8 caracteres" }, 400);
   if (!["admin", "usuario"].includes(tipo_conta)) return json({ error: "tipo_conta inválido" }, 400);
 
-  // 3. Criar usuário no Auth com privilégios administrativos
+  // 3. Criar usuário no Auth com privilégios administrativos.
+  // Se o e-mail já existe (tentativa anterior parcial), reutiliza o Auth user e garante os dados abaixo.
+  let authUser: { id: string } | null = null;
+  let createdNow = false;
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email: cleanEmail,
     password: senha,
@@ -119,14 +139,31 @@ Deno.serve(async (req) => {
     user_metadata: { nome: cleanNome, cargo: cleanCargo },
   });
 
-  if (createErr || !created?.user) {
-    return json({ error: "Falha ao criar usuário no Auth: " + (createErr?.message ?? "desconhecido") }, 400);
+  if (created?.user) {
+    authUser = created.user;
+    createdNow = true;
+  } else if (isAlreadyRegistered(createErr?.message)) {
+    try {
+      authUser = await findUserByEmail(admin, cleanEmail);
+    } catch (err) {
+      return json({ error: "Erro ao localizar usuário já cadastrado: " + (err instanceof Error ? err.message : String(err)) }, 400);
+    }
+    if (!authUser) return json({ error: "E-mail já cadastrado, mas usuário não foi encontrado no Auth" }, 400);
+
+    const { error: updateAuthErr } = await admin.auth.admin.updateUserById(authUser.id, {
+      password: senha,
+      email_confirm: true,
+      user_metadata: { nome: cleanNome, cargo: cleanCargo },
+    });
+    if (updateAuthErr) return json({ error: "Erro ao atualizar usuário existente no Auth: " + updateAuthErr.message }, 400);
+  } else {
+    return json({ error: "Erro auth: " + (createErr?.message ?? "desconhecido") }, 400);
   }
-  const userId = created.user.id;
+  const userId = authUser.id;
 
   // Helper: rollback do auth user em caso de erro nas etapas seguintes
   const rollback = async (msg: string) => {
-    await admin.auth.admin.deleteUser(userId).catch(() => {});
+    if (createdNow) await admin.auth.admin.deleteUser(userId).catch(() => {});
     return json({ error: msg }, 400);
   };
 
