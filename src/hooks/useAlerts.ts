@@ -147,8 +147,10 @@ export function useAlerts() {
     });
 
     const order: Record<AlertLevel, number> = { critico: 0, atencao: 1, info: 2 };
-    return out.sort((a, b) => order[a.level] - order[b.level]);
-  }, [veiculos, motoristas, manutencoes, checklists, multas, abastecimentos]);
+    return out
+      .filter(a => !isDismissed(a.id))
+      .sort((a, b) => order[a.level] - order[b.level]);
+  }, [veiculos, motoristas, manutencoes, checklists, multas, abastecimentos, isDismissed]);
 
   const counts = useMemo(() => ({
     total: alerts.length,
