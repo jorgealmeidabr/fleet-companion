@@ -384,33 +384,7 @@ function UserWizard({
           // === ADMIN: usa a função promote_to_admin que cria motorista + perfil de admin ===
           const { error: promoErr } = await (supabase as any).rpc("promote_to_admin", { _email: email });
           if (promoErr) throw new Error("Erro ao promover admin: " + promoErr.message);
-
-          // Atualiza dados do motorista criado pela função com os dados do formulário
-          const { data: motCreated, error: motFetchErr } = await (supabase as any)
-            .from("motoristas")
-            .select("id")
-            .eq("user_id", userId)
-            .maybeSingle();
-          if (motFetchErr) throw new Error(motFetchErr.message);
-          if (!motCreated) throw new Error("Motorista do admin não foi encontrado após promoção.");
-          motoristaId = motCreated.id;
-
-          await (supabase as any).from("motoristas").update({
-            nome,
-            telefone: telefone || null,
-            cargo: cargo || null,
-            cnh_numero: cnhNum || "00000000000",
-            cnh_categoria: cnhCat || "B",
-            cnh_validade: cnhVal || new Date(Date.now() + 5*365*86400000).toISOString().slice(0,10),
-          }).eq("id", motoristaId);
-
-          // Garante permissões/flag no perfil já criado pela função
-          await (supabase as any).from("usuarios_perfis").update({
-            tipo_conta: "admin",
-            permissoes: finalPerms,
-            ativo: true,
-            must_change_password: true,
-          }).eq("user_id", userId);
+          // Pronto. Não buscamos/atualizamos motorista nem perfil — a função já cuida de tudo.
         } else {
           // === USUÁRIO comum (ou admin vinculado a motorista existente) ===
           if (motoristaId) {
