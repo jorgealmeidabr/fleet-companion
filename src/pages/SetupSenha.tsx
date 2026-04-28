@@ -78,7 +78,7 @@ export default function SetupSenha() {
                 <Req ok={c.num} label="1 número" />
                 <Req ok={!!p1 && p1 === p2} label="Senhas iguais" />
               </ul>
-              <Button type="submit" disabled={!ok || loading} className="w-full bg-gradient-brand text-primary-foreground">
+              <Button type="submit" disabled={!ok || loading} variant="brand" className="w-full">
                 {loading ? "Salvando..." : "Salvar e entrar"}
               </Button>
             </form>
