@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { FormDialog, FieldDef } from "@/components/FormDialog";
@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 import { fmtNumber } from "@/lib/format";
-import type { Veiculo } from "@/lib/types";
+import type { Veiculo, Agendamento } from "@/lib/types";
 import { Plus, Search, MoreVertical, Car, Pencil, Eye, PowerOff } from "lucide-react";
 import { validarPlaca, formatarPlaca, validarAno } from "@/lib/validators";
 import { EmptyState } from "@/components/EmptyState";
