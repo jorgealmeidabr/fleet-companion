@@ -56,7 +56,7 @@ export default function Checklists() {
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { pendentes } = useChecklistPendente();
+  const { pendentes, refresh: refreshPendentes } = useChecklistPendente();
 
   useEffect(() => {
     supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[]));
