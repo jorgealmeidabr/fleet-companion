@@ -16,6 +16,8 @@ import { useRequestBadge } from "@/hooks/useRequestBadge";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { ChecklistPendenteBlock } from "@/components/ChecklistPendenteBlock";
+import { IdleScreen } from "@/components/IdleScreen";
+import { useIdle } from "@/hooks/useIdle";
 
 import { cn } from "@/lib/utils";
 import type { ModuloPermissao } from "@/lib/types";
@@ -151,6 +153,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { counts } = useAlerts();
   const alertCount = isAdmin ? counts.critico + counts.atencao : 0;
   const requestCount = useRequestBadge();
+  const { idle, wake } = useIdle(40000, !!user);
 
   return (
     <SidebarProvider>
@@ -182,6 +185,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <ChecklistPendenteBlock />
       </div>
+      {idle && <IdleScreen onExit={wake} />}
     </SidebarProvider>
   );
 }
