@@ -53,6 +53,32 @@ export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
   const { isAdmin, perfil = null } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Toca 3 bipes curtos via WebAudio (sem assets externos)
+  const playReturnBeeps = () => {
+    try {
+      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const beep = (start: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = 880;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + start + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + 0.15);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + 0.16);
+      };
+      // 3 bipes com ~300ms de intervalo (0ms, 300ms, 600ms)
+      beep(0); beep(0.3); beep(0.6);
+      setTimeout(() => ctx.close().catch(() => {}), 1200);
+    } catch { /* ignora */ }
+  };
 
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
