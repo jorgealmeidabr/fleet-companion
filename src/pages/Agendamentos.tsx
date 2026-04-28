@@ -173,25 +173,53 @@ useEffect(() => {
   }
 };
 
-  // ---- Iniciar uso (agendado → em_uso)
+  // ---- Iniciar uso (agendado → em_uso) — sincroniza km_atual do veículo com km_saida
   const iniciarUso = async (a: Agendamento) => {
     await update(a.id, { status: "em_uso" } as Partial<Agendamento>);
+    if (a.km_saida != null) {
+      await (supabase.from("veiculos") as any)
+        .update({ km_atual: a.km_saida })
+        .eq("id", a.veiculo_id);
+      await reloadVeiculos();
+    }
+  };
+
+  // ---- Upload da foto do hodômetro
+  const handleFotoHodometro = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploadingFoto(true);
+    try {
+      const [url] = await uploadFiles("checklists", [files[0]]);
+      setRetForm(s => ({ ...s, foto_url: url }));
+      toast({ title: "Foto enviada" });
+    } catch (e: any) {
+      toast({ title: "Erro no upload", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingFoto(false);
+    }
   };
 
   // ---- Devolução
   const confirmarDevolucao = async () => {
     if (!returning) return;
     if (retForm.km_retorno == null || retForm.km_retorno < (returning.km_saida ?? 0)) {
-      toast({ title: "Km de retorno inválido", variant: "destructive" });
+      toast({ title: "Km de retorno inválido", description: "O KM informado deve ser maior ou igual ao KM de saída.", variant: "destructive" });
       return;
     }
+    if (!retForm.foto_url) {
+      toast({ title: "Foto do hodômetro obrigatória", description: "Anexe uma foto do hodômetro para confirmar a devolução.", variant: "destructive" });
+      return;
+    }
+    setSavingDevolucao(true);
     try {
+      const obsFinal = `[Foto hodômetro: ${retForm.foto_url}]${retForm.observacoes ? " " + retForm.observacoes : returning.observacoes ? " " + returning.observacoes : ""}`;
       await update(returning.id, {
         km_retorno: retForm.km_retorno,
         data_retorno_real: new Date().toISOString(),
-        observacoes: retForm.observacoes ?? returning.observacoes,
+        observacoes: obsFinal,
         status: "concluido",
       } as Partial<Agendamento>);
+      // Atualiza km_atual do veículo → vira km_saida do próximo agendamento automaticamente
       await (supabase.from("veiculos") as any).update({
         status: "disponivel",
         km_atual: retForm.km_retorno,
@@ -199,9 +227,14 @@ useEffect(() => {
       await reloadVeiculos();
       setReturning(null);
       setRetForm({});
-      toast({ title: "Devolução registrada", description: "Veículo disponível novamente." });
+      toast({
+        title: "Devolução registrada",
+        description: "Lembre-se: o checklist pós-uso é obrigatório antes de novas ações.",
+      });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingDevolucao(false);
     }
   };
 
