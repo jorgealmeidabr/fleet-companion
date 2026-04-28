@@ -23,6 +23,7 @@ import {
   Plus, Search, MoreVertical, ShieldCheck, Mail, Eye, EyeOff, Copy,
   LayoutDashboard, Car, Users as UsersIcon, Wrench, Fuel, CalendarRange,
   ClipboardCheck, AlertTriangle, Bell, History, DollarSign, Lock, Check,
+  FileText,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -40,6 +41,7 @@ const MOD_META: Array<{ key: ModuloPermissao; label: string; icon: any; locked?:
   { key: "abastecimento", label: "Abastecimento",      icon: Fuel },
   { key: "agendamentos",  label: "Agendamentos",       icon: CalendarRange, locked: true },
   { key: "checklists",    label: "Checklists",         icon: ClipboardCheck, locked: true },
+  { key: "solicitacoes",  label: "Solicitações",       icon: FileText },
   { key: "multas",        label: "Multas",             icon: AlertTriangle },
   { key: "alertas",       label: "Alertas",            icon: Bell },
   { key: "historico",     label: "Histórico / Logs",   icon: History },
@@ -51,7 +53,7 @@ const PRESETS: Record<string, Permissoes> = {
     ...PERMISSOES_DEFAULT,
     veiculos: true, abastecimento: true, alertas: true,
   },
-  zerar: { ...PERMISSOES_DEFAULT, agendamentos: true, checklists: true }, // mantém obrigatórios
+  zerar: { ...PERMISSOES_DEFAULT, agendamentos: true, checklists: true, solicitacoes: true }, // mantém obrigatórios
 };
 
 const generatePassword = (): string => {
