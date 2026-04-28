@@ -58,8 +58,53 @@ export default function Agendamentos() {
   const temPendencia = !isAdmin && checklistPendentes.length > 0;
   const navigate = useNavigate();
 
-  // Toca 3 bipes curtos via WebAudio (sem assets externos)
+  // Toca 3 bipes curtos via WebAudio + mensagem de voz (TTS)
   const playReturnBeeps = () => {
+    // 1) Dispara a fala IMEDIATAMENTE no gesto do usuário (necessário em
+    //    navegadores como Chrome/Safari que bloqueiam fala fora de gesto).
+    //    A fala é "engatilhada" agora e segura por ~900ms via pause(),
+    //    para tocar logo após os bipes.
+    let utter: SpeechSynthesisUtterance | null = null;
+    try {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        const synth = window.speechSynthesis;
+        synth.cancel();
+        utter = new SpeechSynthesisUtterance(
+          "Finalize o checklist para concluir o processo de devolução do veículo."
+        );
+        utter.lang = "pt-BR";
+        utter.rate = 1;
+        utter.pitch = 1;
+        utter.volume = 1;
+        const pickVoice = () => {
+          const voices = synth.getVoices();
+          const ptVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("pt"));
+          if (ptVoice && utter) utter.voice = ptVoice;
+        };
+        pickVoice();
+        if (!synth.getVoices().length) {
+          // Algumas plataformas carregam vozes de forma assíncrona
+          synth.onvoiceschanged = () => pickVoice();
+        }
+        // Inicia (dentro do gesto) e pausa para sincronizar com o fim dos bipes
+        synth.speak(utter);
+        synth.pause();
+        setTimeout(() => {
+          try { synth.resume(); } catch { /* ignora */ }
+        }, 950);
+        // Fallback: se pause/resume não for suportado, força um novo speak
+        setTimeout(() => {
+          try {
+            if (!synth.speaking && utter) {
+              synth.cancel();
+              synth.speak(utter);
+            }
+          } catch { /* ignora */ }
+        }, 1100);
+      }
+    } catch { /* ignora */ }
+
+    // 2) Bipes
     try {
       const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
       if (!Ctx) return;
@@ -80,25 +125,6 @@ export default function Agendamentos() {
       // 3 bipes com ~300ms de intervalo (0ms, 300ms, 600ms)
       beep(0); beep(0.3); beep(0.6);
       setTimeout(() => ctx.close().catch(() => {}), 1200);
-
-      // Após os bipes (~900ms), reproduz mensagem de voz (TTS)
-      setTimeout(() => {
-        try {
-          if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-          window.speechSynthesis.cancel();
-          const utter = new SpeechSynthesisUtterance(
-            "Finalize o checklist para concluir o processo de devolução do veículo."
-          );
-          utter.lang = "pt-BR";
-          utter.rate = 1;
-          utter.pitch = 1;
-          utter.volume = 1;
-          const voices = window.speechSynthesis.getVoices();
-          const ptVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("pt"));
-          if (ptVoice) utter.voice = ptVoice;
-          window.speechSynthesis.speak(utter);
-        } catch { /* ignora */ }
-      }, 950);
     } catch { /* ignora */ }
   };
 
