@@ -13,7 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAnonKey, supabaseUrl } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtDateTime } from "@/lib/format";
 import { validarEmail, validarCNH, formatarCNH, validarTelefone, formatarTelefone } from "@/lib/validators";
@@ -358,31 +359,58 @@ function UserWizard({
         }).eq("id", editing.id);
         toast({ title: "Usuário atualizado" });
       } else {
-        // === Modo criar: edge function faz Auth + motorista + perfil ===
+        // === Modo criar: cria Auth em cliente isolado e depois cadastra motorista + perfil ===
         const finalPerms = tipoConta === "admin" ? PERMISSOES_TUDO : perms;
         const linkId = linkExisting && existingMot ? existingMot.id : null;
 
-        const { data: fnData, error: fnErr } = await supabase.functions.invoke(
-          "admin-create-user",
-          {
-            body: {
-              email,
-              senha,
-              nome,
-              telefone: telefone || null,
-              cargo,
-              cnh_numero: cnhNum || null,
-              cnh_categoria: cnhCat || null,
-              cnh_validade: cnhVal || null,
-              tipo_conta: tipoConta,
-              permissoes: finalPerms,
-              link_motorista_id: linkId,
-            },
-          },
-        );
+        const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data: created, error: signUpErr } = await authClient.auth.signUp({
+          email,
+          password: senha,
+          options: { data: { nome, cargo } },
+        });
+        if (signUpErr) throw new Error(signUpErr.message);
+        const userId = created.user?.id;
+        if (!userId) throw new Error("Não foi possível criar o login do usuário.");
 
-        if (fnErr) throw new Error(fnErr.message);
-        if (fnData && (fnData as any).error) throw new Error((fnData as any).error);
+        let motoristaId = linkId;
+        if (motoristaId) {
+          const { error } = await (supabase as any)
+            .from("motoristas")
+            .update({ user_id: userId, nome, email, telefone: telefone || null, cargo: cargo || null })
+            .eq("id", motoristaId);
+          if (error) throw new Error(error.message);
+        } else {
+          const { data: motorista, error } = await (supabase as any)
+            .from("motoristas")
+            .insert({
+              nome,
+              email,
+              telefone: telefone || null,
+              cargo: cargo || null,
+              cnh_numero: cnhNum || "00000000000",
+              cnh_categoria: cnhCat || "B",
+              cnh_validade: cnhVal || new Date(Date.now() + 5*365*86400000).toISOString().slice(0,10),
+              user_id: userId,
+              status: "ativo",
+            })
+            .select("id")
+            .single();
+          if (error) throw new Error(error.message);
+          motoristaId = motorista.id;
+        }
+
+        const { error: perfilErr } = await (supabase as any).from("usuarios_perfis").insert({
+          user_id: userId,
+          motorista_id: motoristaId,
+          tipo_conta: tipoConta,
+          permissoes: finalPerms,
+          ativo: true,
+          must_change_password: true,
+        });
+        if (perfilErr) throw new Error(perfilErr.message);
 
         toast({
           title: "Usuário criado",
