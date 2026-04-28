@@ -79,18 +79,25 @@ export default function Usuarios() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [rows, setRows] = useState<Row[]>([]);
+  const [pendentes, setPendentes] = useState<PendingProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
   const [fTipo, setFTipo] = useState<"all" | "admin" | "usuario">("all");
   const [fStatus, setFStatus] = useState<"all" | "ativo" | "inativo">("all");
+  const [tab, setTab] = useState<"ativos" | "pendentes">("ativos");
 
   const [openModal, setOpenModal] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
+  const [approving, setApproving] = useState<PendingProfile | null>(null);
 
   const reload = async () => {
     setLoading(true);
-    const { data } = await (supabase as any).from("usuarios_perfis").select("*").order("created_at", { ascending: false });
-    const list = (data ?? []) as UsuarioPerfil[];
+    const [perfisRes, pendentesRes] = await Promise.all([
+      (supabase as any).from("usuarios_perfis").select("*").order("created_at", { ascending: false }),
+      (supabase as any).from("profiles").select("id,nome,email,cargo_pretendido,status,created_at")
+        .eq("status", "pendente").order("created_at", { ascending: false }),
+    ]);
+    const list = (perfisRes.data ?? []) as UsuarioPerfil[];
     const mIds = list.map(p => p.motorista_id).filter(Boolean);
     let mots: Record<string, Motorista> = {};
     if (mIds.length) {
@@ -98,6 +105,7 @@ export default function Usuarios() {
       ((ms ?? []) as Motorista[]).forEach(m => { mots[m.id] = m; });
     }
     setRows(list.map(p => ({ ...p, motorista: mots[p.motorista_id], email: mots[p.motorista_id]?.email })));
+    setPendentes((pendentesRes.data ?? []) as PendingProfile[]);
     setLoading(false);
   };
   useEffect(() => { reload(); }, []);
