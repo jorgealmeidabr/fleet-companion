@@ -17,7 +17,7 @@ const toneStyles: Record<string, string> = {
   warning: "text-primary-foreground bg-yellow-600",
   destructive: "bg-amber-500 text-amber-50",
   info: "text-primary-foreground bg-yellow-600",
-  brand: "bg-gradient-brand text-primary-foreground bg-warning",
+  brand: "bg-gradient-brand text-primary-foreground bg-amber-500",
 };
 
 export function KpiCard({ label, value, hint, icon: Icon, tone = "default", trend }: KpiCardProps) {
