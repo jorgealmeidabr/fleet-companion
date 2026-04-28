@@ -93,6 +93,21 @@ useEffect(() => {
     [rows]
   );
 
+  // IDs de veículos com agendamento ativo (fonte de verdade client-side)
+  const veiculosOcupados = useMemo(
+    () => new Set(ativos.map(a => a.veiculo_id)),
+    [ativos]
+  );
+
+  // Lista de veículos com status efetivo (reservado se houver agendamento ativo)
+  const veiculosEfetivos = useMemo<Veiculo[]>(
+    () => veiculos.map(v => {
+      if (v.status === "manutencao" || v.status === "inativo") return v;
+      return veiculosOcupados.has(v.id) ? { ...v, status: "reservado" as Veiculo["status"] } : v;
+    }),
+    [veiculos, veiculosOcupados]
+  );
+
   const eventosNoDia = useMemo(() => {
     if (!selectedDay) return [];
     return ativos.filter(a => inRange(selectedDay, a.data_saida, a.data_retorno_prevista));
