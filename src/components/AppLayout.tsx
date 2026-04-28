@@ -25,19 +25,45 @@ interface NavItem {
   perm?: ModuloPermissao;
 }
 
-const items: NavItem[] = [
-  { title: "Dashboard",     url: "/",              icon: LayoutDashboard, perm: "dashboard" },
-  { title: "Veículos",      url: "/veiculos",      icon: Car,             perm: "veiculos" },
-  { title: "Pessoas",       url: "/motoristas",    icon: Users,           perm: "motoristas" },
-  { title: "Manutenção",    url: "/manutencoes",   icon: Wrench,          perm: "manutencao" },
-  { title: "Abastecimento", url: "/abastecimentos", icon: Fuel,           perm: "abastecimento" },
-  { title: "Agendamentos",  url: "/agendamentos",  icon: CalendarRange,   perm: "agendamentos" },
-  { title: "Checklists",    url: "/checklists",    icon: ClipboardCheck,  perm: "checklists" },
-  { title: "Solicitações",  url: "/solicitacoes",  icon: FileText,        perm: "solicitacoes" },
-  { title: "Multas",        url: "/multas",        icon: AlertTriangle,   perm: "multas" },
-  { title: "Histórico",     url: "/historico",     icon: History,         perm: "historico" },
-  { title: "Alertas",       url: "/alertas",       icon: Bell,            perm: "alertas" },
-  { title: "Usuários",      url: "/usuarios",      icon: ShieldCheck,     perm: "usuarios" },
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const groups: NavGroup[] = [
+  {
+    label: "Gestão",
+    items: [
+      { title: "Dashboard",    url: "/",             icon: LayoutDashboard, perm: "dashboard" },
+      { title: "Pessoas",      url: "/motoristas",   icon: Users,           perm: "motoristas" },
+      { title: "Solicitações", url: "/solicitacoes", icon: FileText,        perm: "solicitacoes" },
+      { title: "Histórico",    url: "/historico",    icon: History,         perm: "historico" },
+      { title: "Multas",       url: "/multas",       icon: AlertTriangle,   perm: "multas" },
+      { title: "Usuários",     url: "/usuarios",     icon: ShieldCheck,     perm: "usuarios" },
+    ],
+  },
+  {
+    label: "Operação",
+    items: [
+      { title: "Veículos",      url: "/veiculos",       icon: Car,    perm: "veiculos" },
+      { title: "Manutenção",    url: "/manutencoes",    icon: Wrench, perm: "manutencao" },
+      { title: "Abastecimento", url: "/abastecimentos", icon: Fuel,   perm: "abastecimento" },
+    ],
+  },
+  {
+    label: "Execução",
+    items: [
+      { title: "Agendamentos", url: "/agendamentos", icon: CalendarRange,  perm: "agendamentos" },
+      { title: "Checklists",   url: "/checklists",   icon: ClipboardCheck, perm: "checklists" },
+    ],
+  },
+  {
+    label: "Conta",
+    items: [
+      { title: "Meu perfil", url: "/meu-perfil", icon: UserCircle2 },
+      { title: "Alertas",    url: "/alertas",    icon: Bell, perm: "alertas" },
+    ],
+  },
 ];
 
 function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestCount: number }) {
@@ -47,7 +73,9 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
   const collapsed = state === "collapsed";
 
   // CRÍTICO: itens sem acesso NÃO existem no DOM
-  const visible = items.filter(i => !i.perm || canSee(i.perm));
+  const visibleGroups = groups
+    .map(g => ({ ...g, items: g.items.filter(i => !i.perm || canSee(i.perm)) }))
+    .filter(g => g.items.length > 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -65,57 +93,43 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Operação</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visible.map(item => {
-                const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
-                const badgeValue =
-                  item.url === "/alertas" ? alertCount :
-                  item.url === "/solicitacoes" ? requestCount : 0;
-                const badgeVariant: "destructive" | "default" =
-                  item.url === "/alertas" ? "destructive" : "default";
-                const showBadge = badgeValue > 0;
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={active}>
-                      <NavLink to={item.url} end={item.url === "/"} className="relative">
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span className="flex-1">{item.title}</span>}
-                        {showBadge && (
-                          <Badge variant={badgeVariant} className={cn(
-                            "h-5 min-w-[20px] justify-center px-1.5 text-[10px]",
-                            item.url === "/solicitacoes" && "bg-info text-info-foreground hover:bg-info",
-                            collapsed && "absolute right-0 top-0 -translate-y-1 translate-x-1",
-                          )}>
-                            {badgeValue}
-                          </Badge>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Conta</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location.pathname === "/meu-perfil"}>
-                  <NavLink to="/meu-perfil">
-                    <UserCircle2 className="h-4 w-4" />
-                    {!collapsed && <span>Meu perfil</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleGroups.map(group => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map(item => {
+                  const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
+                  const badgeValue =
+                    item.url === "/alertas" ? alertCount :
+                    item.url === "/solicitacoes" ? requestCount : 0;
+                  const badgeVariant: "destructive" | "default" =
+                    item.url === "/alertas" ? "destructive" : "default";
+                  const showBadge = badgeValue > 0;
+                  return (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild isActive={active}>
+                        <NavLink to={item.url} end={item.url === "/"} className="relative">
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span className="flex-1">{item.title}</span>}
+                          {showBadge && (
+                            <Badge variant={badgeVariant} className={cn(
+                              "h-5 min-w-[20px] justify-center px-1.5 text-[10px]",
+                              item.url === "/solicitacoes" && "bg-info text-info-foreground hover:bg-info",
+                              collapsed && "absolute right-0 top-0 -translate-y-1 translate-x-1",
+                            )}>
+                              {badgeValue}
+                            </Badge>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         {!collapsed && (
