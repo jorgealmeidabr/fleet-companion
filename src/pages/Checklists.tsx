@@ -58,6 +58,7 @@ export default function Checklists() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const { pendentes, refresh: refreshPendentes } = useChecklistPendente();
+  const { perfil } = useAuth();
 
   useEffect(() => {
     supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[]));
