@@ -18,9 +18,10 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
 import type { Agendamento, Veiculo, Motorista } from "@/lib/types";
-import { Car, CheckCircle2, MapPin, RotateCcw, User } from "lucide-react";
+import { Camera, Car, CheckCircle2, MapPin, RotateCcw, Upload, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
+import { uploadFiles } from "@/lib/storage";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -58,7 +59,9 @@ export default function Agendamentos() {
 
   // Devolução
   const [returning, setReturning] = useState<Agendamento | null>(null);
-  const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string }>({});
+  const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string; foto_url?: string }>({});
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [savingDevolucao, setSavingDevolucao] = useState(false);
 
   const reloadVeiculos = async () => {
     const { data } = await supabase.from("veiculos").select("*").order("placa");
