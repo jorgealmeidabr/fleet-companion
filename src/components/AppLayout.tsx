@@ -162,7 +162,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="ml-auto flex items-center gap-2">
               <GlobalSearch />
               {tipoConta && (
-                <Badge variant={tipoConta === "admin" ? "default" : "secondary"} className={tipoConta === "admin" ? "bg-gradient-brand text-primary-foreground" : ""}>
+                <Badge variant={tipoConta === "admin" ? "brand" : "secondary"}>
                   {tipoConta === "admin" ? "Admin" : "Usuário"}
                 </Badge>
               )}
