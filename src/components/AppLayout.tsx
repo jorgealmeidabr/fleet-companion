@@ -15,6 +15,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useRequestBadge } from "@/hooks/useRequestBadge";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { ChecklistPendenteBlock } from "@/components/ChecklistPendenteBlock";
 import { cn } from "@/lib/utils";
 import type { ModuloPermissao } from "@/lib/types";
 
@@ -179,6 +180,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
+        <ChecklistPendenteBlock />
       </div>
     </SidebarProvider>
   );
