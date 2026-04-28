@@ -13,8 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, supabaseAnonKey, supabaseUrl } from "@/lib/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtDateTime } from "@/lib/format";
 import { validarEmail, validarCNH, formatarCNH, validarTelefone, formatarTelefone } from "@/lib/validators";
@@ -269,13 +268,9 @@ function UserWizard({
   // Passo 2: permissões
   const [perms, setPerms] = useState<Permissoes>(PERMISSOES_DEFAULT);
 
-  // Detecção de motorista existente
-  const [existingMot, setExistingMot] = useState<Motorista | null>(null);
-  const [linkExisting, setLinkExisting] = useState(false);
-
   useEffect(() => {
     if (!open) return;
-    setStep(1); setSaving(false); setExistingMot(null); setLinkExisting(false);
+    setStep(1); setSaving(false);
     if (editing) {
       const m = editing.motorista;
       setNome(m?.nome ?? ""); setEmail(m?.email ?? ""); setTelefone(m?.telefone ?? "");
@@ -288,28 +283,6 @@ function UserWizard({
       setPerms(PERMISSOES_DEFAULT); setSenha(generatePassword());
     }
   }, [open, editing]);
-
-  // Verifica motorista existente por email (apenas no modo criar)
-  useEffect(() => {
-    if (editing) return;
-    const e = email.trim().toLowerCase();
-    if (!e || validarEmail(e)) { setExistingMot(null); return; }
-    const t = setTimeout(async () => {
-      const { data } = await supabase.from("motoristas").select("*").eq("email", e).limit(1);
-      const found = ((data ?? []) as Motorista[])[0];
-      if (found) {
-        setExistingMot(found);
-        // pré-preenche
-        if (!nome) setNome(found.nome);
-        if (!cargo) setCargo(found.cargo ?? "");
-        if (!telefone) setTelefone(found.telefone ?? "");
-        if (!cnhNum) setCnhNum(found.cnh_numero);
-        if (!cnhCat) setCnhCat(found.cnh_categoria);
-        if (!cnhVal) setCnhVal(found.cnh_validade);
-      } else setExistingMot(null);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [email, editing]);
 
   const passo1Valido = (): string | null => {
     if (nome.trim().length < 2) return "Informe o nome";
@@ -359,78 +332,23 @@ function UserWizard({
         }).eq("id", editing.id);
         toast({ title: "Usuário atualizado" });
       } else {
-        // === Modo criar: cria Auth em cliente isolado e depois cadastra motorista + perfil ===
+        // === Modo criar: Edge Function usa auth.admin.createUser + inserts explícitos ===
         const finalPerms = tipoConta === "admin" ? PERMISSOES_TUDO : perms;
-        const linkId = linkExisting && existingMot ? existingMot.id : null;
-
-        const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-        });
-        const { data: created, error: signUpErr } = await authClient.auth.signUp({
-          email,
-          password: senha,
-          options: { data: { nome, cargo } },
-        });
-        if (signUpErr) throw new Error(signUpErr.message);
-        const userId = created.user?.id;
-        if (!userId) throw new Error("Não foi possível criar o login do usuário.");
-
-        // Pequena espera para garantir que o trigger handle_new_user já criou profile/role
-        await new Promise((r) => setTimeout(r, 400));
-
-        // Garante registro em public.profiles caso o trigger tenha falhado silenciosamente
-        const { error: profileErr } = await (supabase as any)
-          .from("profiles")
-          .upsert({ id: userId, nome, email }, { onConflict: "id" });
-        if (profileErr) {
-          console.warn("Falha ao garantir profile:", profileErr.message);
-        }
-
-        let motoristaId = linkId;
-
-        if (tipoConta === "admin" && !linkId) {
-          // === ADMIN: usa a função promote_to_admin que cria motorista + perfil de admin ===
-          const { error: promoErr } = await (supabase as any).rpc("promote_to_admin", { _email: email });
-          if (promoErr) throw new Error("Erro ao promover admin: " + promoErr.message);
-          // Pronto. Não buscamos/atualizamos motorista nem perfil — a função já cuida de tudo.
-        } else {
-          // === USUÁRIO comum (ou admin vinculado a motorista existente) ===
-          if (motoristaId) {
-            const { error } = await (supabase as any)
-              .from("motoristas")
-              .update({ user_id: userId, nome, email, telefone: telefone || null, cargo: cargo || null })
-              .eq("id", motoristaId);
-            if (error) throw new Error(error.message);
-          } else {
-            const { data: motorista, error } = await (supabase as any)
-              .from("motoristas")
-              .insert({
-                nome,
-                email,
-                telefone: telefone || null,
-                cargo: cargo || null,
-                cnh_numero: cnhNum || "00000000000",
-                cnh_categoria: cnhCat || "B",
-                cnh_validade: cnhVal || new Date(Date.now() + 5*365*86400000).toISOString().slice(0,10),
-                user_id: userId,
-                status: "ativo",
-              })
-              .select("id")
-              .single();
-            if (error) throw new Error(error.message);
-            motoristaId = motorista.id;
-          }
-
-          const { error: perfilErr } = await (supabase as any).from("usuarios_perfis").insert({
-            user_id: userId,
-            motorista_id: motoristaId,
+        const { error: createErr } = await (supabase as any).functions.invoke("admin-create-user", {
+          body: {
+            email: email.trim().toLowerCase(),
+            senha,
+            nome: nome.trim(),
+            telefone: telefone || null,
+            cargo: cargo.trim(),
+            cnh_numero: cnhNum || null,
+            cnh_categoria: cnhCat || "B",
+            cnh_validade: cnhVal || null,
             tipo_conta: tipoConta,
             permissoes: finalPerms,
-            ativo: true,
-            must_change_password: true,
-          });
-          if (perfilErr) throw new Error(perfilErr.message);
-        }
+          },
+        });
+        if (createErr) throw new Error(createErr.message);
 
         toast({
           title: "Usuário criado",
@@ -476,16 +394,6 @@ function UserWizard({
               <Field label="Nome completo *"><Input value={nome} onChange={e => setNome(e.target.value)} /></Field>
               <Field label="E-mail (login) *"><Input type="email" disabled={!!editing} value={email} onChange={e => setEmail(e.target.value)} /></Field>
             </div>
-            {existingMot && !editing && (
-              <div className="rounded-md border border-info/30 bg-info/10 p-3 text-sm">
-                <p className="font-medium text-info">E-mail já cadastrado em motoristas: <span className="font-bold">{existingMot.nome}</span>.</p>
-                <p className="mt-1 text-xs text-muted-foreground">Deseja vincular este cadastro existente?</p>
-                <div className="mt-2 flex gap-2">
-                  <Button size="sm" variant={linkExisting ? "default" : "outline"} onClick={() => setLinkExisting(true)}>Sim, vincular</Button>
-                  <Button size="sm" variant={!linkExisting ? "default" : "outline"} onClick={() => setLinkExisting(false)}>Não, criar novo</Button>
-                </div>
-              </div>
-            )}
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Telefone"><Input value={telefone} onChange={e => setTelefone(formatarTelefone(e.target.value))} placeholder="(00) 00000-0000" /></Field>
               <Field label="Cargo *"><Input value={cargo} onChange={e => setCargo(e.target.value)} placeholder="Motorista, Técnico, Supervisor..." /></Field>
