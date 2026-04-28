@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
+import { useChecklistPendente } from "@/hooks/useChecklistPendente";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
@@ -53,6 +54,8 @@ export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
   const { isAdmin, perfil = null } = useAuth();
   const { toast } = useToast();
+  const { pendentes: checklistPendentes } = useChecklistPendente();
+  const temPendencia = !isAdmin && checklistPendentes.length > 0;
   const navigate = useNavigate();
 
   // Toca 3 bipes curtos via WebAudio (sem assets externos)
@@ -178,6 +181,15 @@ export default function Agendamentos() {
   // ---- Confirmar novo agendamento
   const confirmarAgendamento = async () => {
     if (!pickedVeiculo) return;
+    if (temPendencia) {
+      toast({
+        title: "Checklist pós-uso pendente",
+        description: "Finalize o checklist da última devolução antes de reservar outro veículo.",
+        variant: "destructive",
+      });
+      navigate("/checklists");
+      return;
+    }
     if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
@@ -288,8 +300,9 @@ export default function Agendamentos() {
     await update(a.id, { status: "cancelado" } as Partial<Agendamento>);
   };
 
-  // Veículo é selecionável se NÃO está em manutencao/inativo (regra mantida).
-  const isVeiculoSelecionavel = (v: Veiculo) => v.status !== "manutencao" && v.status !== "inativo";
+  // Veículo é selecionável se NÃO está em manutencao/inativo E o usuário não tem checklist pendente.
+  const isVeiculoSelecionavel = (v: Veiculo) =>
+    !temPendencia && v.status !== "manutencao" && v.status !== "inativo";
 
   return (
     <>
