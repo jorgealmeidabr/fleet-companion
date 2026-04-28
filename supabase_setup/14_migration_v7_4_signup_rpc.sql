@@ -17,7 +17,6 @@ as $$
 declare
   _auth_email text;
   _auth_nome text;
-  _current_status text;
 begin
   select au.email, au.raw_user_meta_data->>'nome'
     into _auth_email, _auth_nome
@@ -32,10 +31,6 @@ begin
     raise exception 'E-mail não corresponde ao usuário criado';
   end if;
 
-  select status into _current_status
-  from public.profiles
-  where id = _user_id;
-
   insert into public.profiles (id, nome, email, cargo_pretendido, status)
   values (
     _user_id,
@@ -49,7 +44,7 @@ begin
         email = coalesce(excluded.email, public.profiles.email),
         cargo_pretendido = null,
         status = case
-          when public.profiles.status = 'ativo' then 'ativo'
+          when public.profiles.status in ('ativo', 'rejeitado') then public.profiles.status
           else 'pendente'
         end;
 end;
@@ -78,7 +73,7 @@ begin
         email = coalesce(excluded.email, public.profiles.email),
         cargo_pretendido = null,
         status = case
-          when public.profiles.status = 'ativo' then 'ativo'
+          when public.profiles.status in ('ativo', 'rejeitado') then public.profiles.status
           else 'pendente'
         end;
 
