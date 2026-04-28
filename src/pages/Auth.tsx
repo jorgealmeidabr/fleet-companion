@@ -283,6 +283,7 @@ export default function Auth() {
           )}
         </aside>
       </div>
+      {idle && <IdleScreen onExit={wake} />}
     </>
   );
 }
