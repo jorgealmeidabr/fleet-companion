@@ -87,8 +87,8 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-bold text-sidebar-foreground">BRQ - FROTA INTERNA</span>
-              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">gestão de frotas</span>
+              <span className="text-sm font-bold text-sidebar-foreground">BRQ - Frota Interna</span>
+              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">gestão de frota </span>
             </div>
           )}
         </div>
