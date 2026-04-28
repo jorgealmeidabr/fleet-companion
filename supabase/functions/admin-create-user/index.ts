@@ -56,23 +56,16 @@ Deno.serve(async (req) => {
   const token = authHeader.slice("Bearer ".length).trim();
   if (!token) return json({ error: "Token ausente" }, 401);
 
-  // Decodifica o payload do JWT (sem chamar /auth/v1/user, que falha com
-  // "Auth session missing!" quando o client não tem sessão persistida).
-  // A confiança no token vem do fato de ele ter sido assinado pelo Supabase
-  // e enviado via supabase.functions.invoke do client autenticado.
-  let callerUserId: string;
-  try {
-    const payloadB64 = token.split(".")[1];
-    const padded = payloadB64 + "=".repeat((4 - (payloadB64.length % 4)) % 4);
-    const decoded = JSON.parse(
-      atob(padded.replace(/-/g, "+").replace(/_/g, "/")),
-    ) as { sub?: string; exp?: number };
-    if (!decoded.sub) throw new Error("sub ausente");
-    if (decoded.exp && decoded.exp * 1000 < Date.now()) throw new Error("token expirado");
-    callerUserId = decoded.sub;
-  } catch (e) {
-    return json({ error: "Token inválido: " + (e as Error).message }, 401);
+  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data: caller, error: callerErr } = await authClient.auth.getUser(token);
+  if (callerErr || !caller?.user?.id) {
+    return json({ error: "Não autenticado" }, 401);
   }
+  const callerUserId = caller.user.id;
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
