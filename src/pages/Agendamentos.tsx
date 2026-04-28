@@ -651,7 +651,7 @@ export default function Agendamentos() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
-            <Button className="bg-gradient-brand text-primary-foreground" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
+            <Button variant="brand" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
               {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
             </Button>
           </DialogFooter>
