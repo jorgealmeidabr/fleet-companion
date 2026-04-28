@@ -596,7 +596,7 @@ export default function Agendamentos() {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setPickedVeiculo(null); setForm({}); }}>Cancelar</Button>
             <Button
-              className="bg-gradient-brand text-primary-foreground"
+              variant="brand"
               disabled={!!conflito}
               onClick={confirmarAgendamento}
             >
