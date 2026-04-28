@@ -382,7 +382,7 @@ useEffect(() => {
       <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
     </Button>
   )}
-  {isAdmin && (
+  {a.status === "agendado" && a.motorista_id === perfil?.motorista_id && (
     <Button size="sm" variant="ghost" onClick={() => cancelar(a)}>Cancelar</Button>
   )}
 </div>
