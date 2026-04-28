@@ -43,6 +43,22 @@ export interface Checklist { id: string; veiculo_id: string; motorista_id: strin
 export interface Agendamento { id: string; veiculo_id: string; motorista_id: string; data_saida: string; data_retorno_prevista: string; data_retorno_real: string | null; destino: string | null; km_saida: number | null; km_retorno: number | null; status: AgendamentoStatus; observacoes: string | null; created_at: string; }
 export interface Multa { id: string; veiculo_id: string; motorista_id: string | null; data_infracao: string; tipo_infracao: string; valor: number; pontos_cnh: number; status_pagamento: MultaStatus; auto_infracao: string | null; created_at: string; }
 export interface UsuarioPerfil { id: string; user_id: string; motorista_id: string; tipo_conta: TipoConta; permissoes: Permissoes; ativo: boolean; must_change_password: boolean; created_at: string; last_login: string | null; }
+export interface Request {
+  id: string;
+  protocol: string;
+  user_id: string;
+  vehicle_id: string;
+  type: RequestType;
+  km: number;
+  urgency: RequestUrgency | null;
+  problem_description: string | null;
+  fuel_type: string | null;
+  liters: number | null;
+  observations: string | null;
+  status: RequestStatus;
+  pdf_url: string | null;
+  created_at: string;
+}
 
 // Stub minimal de Database para o supabase-js
 export type Database = {
@@ -55,6 +71,7 @@ export type Database = {
       checklists: { Row: Checklist; Insert: Partial<Checklist>; Update: Partial<Checklist> };
       agendamentos: { Row: Agendamento; Insert: Partial<Agendamento>; Update: Partial<Agendamento> };
       multas: { Row: Multa; Insert: Partial<Multa>; Update: Partial<Multa> };
+      requests: { Row: Request; Insert: Partial<Request>; Update: Partial<Request> };
       profiles: { Row: { id: string; nome: string | null; email: string | null; created_at: string }; Insert: any; Update: any };
       user_roles: { Row: { id: string; user_id: string; role: AppRole }; Insert: any; Update: any };
       usuarios_perfis: { Row: UsuarioPerfil; Insert: Partial<UsuarioPerfil>; Update: Partial<UsuarioPerfil> };
