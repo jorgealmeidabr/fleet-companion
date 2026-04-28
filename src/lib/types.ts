@@ -8,6 +8,9 @@ export type ManutencaoStatus = "agendada" | "em_andamento" | "concluida";
 export type ChecklistStatus = "ok" | "problema";
 export type AgendamentoStatus = "agendado" | "em_uso" | "concluido" | "cancelado";
 export type MultaStatus = "pendente" | "pago" | "contestado";
+export type RequestType = "maintenance" | "fuel";
+export type RequestUrgency = "low" | "medium" | "high";
+export type RequestStatus = "requested" | "pending" | "completed";
 export type AppRole = "admin" | "motorista";
 export type TipoConta = "admin" | "usuario";
 
