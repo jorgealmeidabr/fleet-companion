@@ -2,6 +2,7 @@
 // checklist faltando, multa pendente, consumo anormal.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useDismissedAlerts } from "@/hooks/useDismissedAlerts";
 import type { Veiculo, Motorista, Manutencao, Checklist, Multa, Abastecimento } from "@/lib/types";
 
 export type AlertLevel = "critico" | "atencao" | "info";
@@ -20,6 +21,7 @@ export interface AlertItem {
 const DAY = 24 * 60 * 60 * 1000;
 
 export function useAlerts() {
+  const { isDismissed } = useDismissedAlerts();
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
@@ -145,8 +147,10 @@ export function useAlerts() {
     });
 
     const order: Record<AlertLevel, number> = { critico: 0, atencao: 1, info: 2 };
-    return out.sort((a, b) => order[a.level] - order[b.level]);
-  }, [veiculos, motoristas, manutencoes, checklists, multas, abastecimentos]);
+    return out
+      .filter(a => !isDismissed(a.id))
+      .sort((a, b) => order[a.level] - order[b.level]);
+  }, [veiculos, motoristas, manutencoes, checklists, multas, abastecimentos, isDismissed]);
 
   const counts = useMemo(() => ({
     total: alerts.length,
