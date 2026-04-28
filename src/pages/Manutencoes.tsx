@@ -132,7 +132,7 @@ export default function Manutencoes() {
         </Select>
         <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} placeholder="De" />
         <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} placeholder="Até" />
-        <Card className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-brand text-primary-foreground">
+        <Card className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-brand text-primary-foreground bg-warning">
           <div className="text-xs opacity-80">Custo total</div>
           <div className="text-base font-bold"><Money value={totalCusto} className="text-primary-foreground" /></div>
         </Card>
