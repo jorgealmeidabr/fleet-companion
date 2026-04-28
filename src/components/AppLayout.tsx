@@ -120,7 +120,7 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
       <SidebarFooter className="border-t border-sidebar-border">
         {!collapsed && (
           <div className="px-2 py-1 text-[10px] text-sidebar-foreground/50">
-            v1.0 • BRQ Digital Solutions
+            v1.0 • Sistema de Frotas
           </div>
         )}
       </SidebarFooter>
