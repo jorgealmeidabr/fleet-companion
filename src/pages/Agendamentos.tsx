@@ -18,9 +18,10 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
 import type { Agendamento, Veiculo, Motorista } from "@/lib/types";
-import { Car, CheckCircle2, MapPin, RotateCcw, User } from "lucide-react";
+import { Camera, Car, CheckCircle2, MapPin, RotateCcw, Upload, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
+import { uploadFiles } from "@/lib/storage";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -58,7 +59,9 @@ export default function Agendamentos() {
 
   // Devolução
   const [returning, setReturning] = useState<Agendamento | null>(null);
-  const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string }>({});
+  const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string; foto_url?: string }>({});
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [savingDevolucao, setSavingDevolucao] = useState(false);
 
   const reloadVeiculos = async () => {
     const { data } = await supabase.from("veiculos").select("*").order("placa");
@@ -170,25 +173,53 @@ useEffect(() => {
   }
 };
 
-  // ---- Iniciar uso (agendado → em_uso)
+  // ---- Iniciar uso (agendado → em_uso) — sincroniza km_atual do veículo com km_saida
   const iniciarUso = async (a: Agendamento) => {
     await update(a.id, { status: "em_uso" } as Partial<Agendamento>);
+    if (a.km_saida != null) {
+      await (supabase.from("veiculos") as any)
+        .update({ km_atual: a.km_saida })
+        .eq("id", a.veiculo_id);
+      await reloadVeiculos();
+    }
+  };
+
+  // ---- Upload da foto do hodômetro
+  const handleFotoHodometro = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploadingFoto(true);
+    try {
+      const [url] = await uploadFiles("checklists", [files[0]]);
+      setRetForm(s => ({ ...s, foto_url: url }));
+      toast({ title: "Foto enviada" });
+    } catch (e: any) {
+      toast({ title: "Erro no upload", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingFoto(false);
+    }
   };
 
   // ---- Devolução
   const confirmarDevolucao = async () => {
     if (!returning) return;
     if (retForm.km_retorno == null || retForm.km_retorno < (returning.km_saida ?? 0)) {
-      toast({ title: "Km de retorno inválido", variant: "destructive" });
+      toast({ title: "Km de retorno inválido", description: "O KM informado deve ser maior ou igual ao KM de saída.", variant: "destructive" });
       return;
     }
+    if (!retForm.foto_url) {
+      toast({ title: "Foto do hodômetro obrigatória", description: "Anexe uma foto do hodômetro para confirmar a devolução.", variant: "destructive" });
+      return;
+    }
+    setSavingDevolucao(true);
     try {
+      const obsFinal = `[Foto hodômetro: ${retForm.foto_url}]${retForm.observacoes ? " " + retForm.observacoes : returning.observacoes ? " " + returning.observacoes : ""}`;
       await update(returning.id, {
         km_retorno: retForm.km_retorno,
         data_retorno_real: new Date().toISOString(),
-        observacoes: retForm.observacoes ?? returning.observacoes,
+        observacoes: obsFinal,
         status: "concluido",
       } as Partial<Agendamento>);
+      // Atualiza km_atual do veículo → vira km_saida do próximo agendamento automaticamente
       await (supabase.from("veiculos") as any).update({
         status: "disponivel",
         km_atual: retForm.km_retorno,
@@ -196,9 +227,14 @@ useEffect(() => {
       await reloadVeiculos();
       setReturning(null);
       setRetForm({});
-      toast({ title: "Devolução registrada", description: "Veículo disponível novamente." });
+      toast({
+        title: "Devolução registrada",
+        description: "Lembre-se: o checklist pós-uso é obrigatório antes de novas ações.",
+      });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingDevolucao(false);
     }
   };
 
@@ -499,18 +535,40 @@ useEffect(() => {
                 Km saída: {fmtNumber(returning.km_saida ?? 0)}
               </p>
               <div className="space-y-1.5">
-                <Label>Km de retorno *</Label>
-                <Input type="number" value={retForm.km_retorno ?? ""} onChange={(e) => setRetForm(s => ({ ...s, km_retorno: Number(e.target.value) }))} />
+                <Label>Km de retorno (hodômetro) *</Label>
+                <Input type="number" placeholder="Informe o KM atual" value={retForm.km_retorno ?? ""} onChange={(e) => setRetForm(s => ({ ...s, km_retorno: Number(e.target.value) }))} />
+                <p className="text-xs text-muted-foreground">Esse KM virará o KM de saída do próximo agendamento.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-2"><Camera className="h-4 w-4" />Foto do hodômetro *</Label>
+                {!retForm.foto_url ? (
+                  <Input type="file" accept="image/*" capture="environment" disabled={uploadingFoto}
+                    onChange={(e) => handleFotoHodometro(e.target.files)} />
+                ) : (
+                  <div className="relative inline-block">
+                    <img src={retForm.foto_url} alt="hodômetro" className="h-32 rounded-md border border-border object-cover" />
+                    <button type="button" onClick={() => setRetForm(s => ({ ...s, foto_url: undefined }))}
+                      className="absolute top-1 right-1 rounded-full bg-destructive p-1 text-destructive-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                {uploadingFoto && <p className="text-xs text-muted-foreground inline-flex items-center gap-1"><Upload className="h-3 w-3 animate-pulse" />Enviando...</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Observações</Label>
                 <Textarea value={retForm.observacoes ?? ""} onChange={(e) => setRetForm(s => ({ ...s, observacoes: e.target.value }))} />
               </div>
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
+                ⚠️ Após a devolução, o checklist pós-uso é obrigatório antes de novas ações no sistema.
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
-            <Button className="bg-gradient-brand text-primary-foreground" onClick={confirmarDevolucao}>Confirmar devolução</Button>
+            <Button className="bg-gradient-brand text-primary-foreground" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
+              {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
