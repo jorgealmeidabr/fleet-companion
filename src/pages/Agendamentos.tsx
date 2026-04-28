@@ -454,7 +454,7 @@ export default function Agendamentos() {
                             </Button>
                           )}
                           {(isAdmin || ehDono) && (
-                            <Button size="sm" className="bg-gradient-brand text-primary-foreground"
+                            <Button size="sm" variant="brand"
                               onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
                               <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
                             </Button>
