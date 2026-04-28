@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { validarEmail } from "@/lib/validators";
-import brqLogo from "@/assets/brq-logo-login.png";
+import brqLogo from "@/assets/brq-logo-frota.png";
 
 export default function Auth() {
   const { user, signIn } = useAuth();
@@ -74,6 +74,19 @@ export default function Auth() {
             linear-gradient(to bottom, rgba(255,255,255,0.055) 1px, transparent 1px);
           background-size: 42px 42px;
           pointer-events: none;
+          animation: brqGridDrift 30s linear infinite;
+        }
+        .brq-left::after {
+          content: "";
+          position: absolute; inset: -20%;
+          background:
+            radial-gradient(circle at 20% 30%, rgba(212,160,23,0.18) 0, transparent 8%),
+            radial-gradient(circle at 70% 80%, rgba(212,160,23,0.14) 0, transparent 7%),
+            radial-gradient(circle at 85% 20%, rgba(245,196,0,0.12) 0, transparent 6%),
+            radial-gradient(circle at 35% 75%, rgba(212,160,23,0.10) 0, transparent 9%);
+          filter: blur(2px);
+          pointer-events: none;
+          animation: brqOrbDrift 22s ease-in-out infinite alternate;
         }
         .brq-eyebrow {
           position: absolute;
@@ -88,11 +101,10 @@ export default function Auth() {
         .brq-logo-wrap {
           position: relative; z-index: 2;
           display: flex; flex-direction: column; align-items: center; gap: 14px;
+          animation: brqFloat 6s ease-in-out infinite;
         }
         .brq-logo {
           max-width: 460px; width: 100%; height: auto;
-          filter: brightness(0) invert(1);
-          mix-blend-mode: screen;
         }
         .brq-tagline {
           font-family: 'Barlow', sans-serif;
@@ -190,6 +202,16 @@ export default function Auth() {
 
         @keyframes brqFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes brqFadeUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes brqGridDrift { from { background-position: 0 0, 0 0; } to { background-position: 42px 42px, 42px 42px; } }
+        @keyframes brqOrbDrift {
+          0%   { transform: translate(0, 0) scale(1); }
+          50%  { transform: translate(-2%, 2%) scale(1.05); }
+          100% { transform: translate(2%, -1%) scale(1); }
+        }
+        @keyframes brqFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
 
         @media (max-width: 768px) {
           .brq-login { flex-direction: column; height: auto; min-height: 100vh; }
