@@ -130,6 +130,32 @@ export default function Usuarios() {
     reload();
   };
 
+  const aprovar = async (p: PendingProfile, tipo: "admin" | "usuario") => {
+    const { error } = await (supabase as any).rpc("approve_user", {
+      _user_id: p.id,
+      _tipo: tipo,
+      _permissoes: null,
+      _cargo: p.cargo_pretendido,
+    });
+    if (error) {
+      toast({ title: "Erro ao aprovar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Usuário aprovado", description: `${p.nome ?? p.email} agora pode acessar o sistema.` });
+    setApproving(null);
+    reload();
+  };
+
+  const rejeitar = async (p: PendingProfile) => {
+    const { error } = await (supabase as any).rpc("reject_user", { _user_id: p.id });
+    if (error) {
+      toast({ title: "Erro ao rejeitar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Cadastro rejeitado" });
+    reload();
+  };
+
   return (
     <>
       <PageHeader
