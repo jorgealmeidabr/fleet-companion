@@ -6,6 +6,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { PageHeader } from "@/components/PageHeader";
 import { fmtBRL, fmtNumber } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAlerts } from "@/hooks/useAlerts";
 import { Car, Wrench, AlertTriangle, Fuel, Gauge, Bell } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -31,6 +32,7 @@ const safeDiffDays = (d: string | null | undefined, ref: Date): number | null =>
 
 export default function Dashboard() {
   const { canSeeFinancial } = usePermissions();
+  const { counts: alertCounts } = useAlerts();
   const money = (n: number) => canSeeFinancial() ? fmtBRL(n) : "🔒 ••••";
   const [loading, setLoading] = useState(true);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
@@ -161,7 +163,7 @@ export default function Dashboard() {
         <KpiCard label="Disponíveis" value={disponiveis} icon={Car} tone="success" hint={`${veiculos.length} veículos no total`} />
         <KpiCard label="Em manutenção" value={emManutencao} icon={Wrench} tone="warning" />
         <KpiCard label="Inativos" value={inativos} icon={AlertTriangle} tone="destructive" />
-        <KpiCard label="Alertas ativos" value={alertas.length} icon={Bell} tone={alertas.length ? "destructive" : "success"} />
+        <KpiCard label="Alertas ativos" value={alertCounts.total} icon={Bell} tone={alertCounts.total ? "destructive" : "success"} />
         <KpiCard label="Combustível (mês)" value={money(gastoCombMes)} icon={Fuel} tone="brand" trend={canSeeFinancial() ? { value: varComb, label: "vs mês ant." } : undefined} />
         <KpiCard label="Manutenção (mês)" value={money(gastoManutMes)} icon={Wrench} tone="info" trend={canSeeFinancial() ? { value: varManut, label: "vs mês ant." } : undefined} />
         <KpiCard label="Consumo médio" value={`${fmtNumber(consumoMedio, { maximumFractionDigits: 2 })} km/l`} icon={Gauge} />
