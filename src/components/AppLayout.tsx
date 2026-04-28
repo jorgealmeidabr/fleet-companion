@@ -132,9 +132,9 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
           </SidebarGroup>
         ))}
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border gap-0 px-0 py-0">
         {!collapsed && (
-          <div className="px-2 py-1 text-[10px] text-sidebar-foreground/50">
+          <div className="px-2 py-1 text-[10px] text-sidebar-foreground/50 text-center">
             v1.0 • Sistema de Frotas
           </div>
         )}
