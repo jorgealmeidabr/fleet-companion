@@ -185,6 +185,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <ChecklistPendenteBlock />
       </div>
+      {idle && <IdleScreen onExit={wake} />}
     </SidebarProvider>
   );
 }
