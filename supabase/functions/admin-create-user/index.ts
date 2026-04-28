@@ -53,12 +53,16 @@ Deno.serve(async (req) => {
   // 1. Autenticar o caller e verificar se é admin
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) return json({ error: "Não autenticado" }, 401);
+  const token = authHeader.slice("Bearer ".length).trim();
+  if (!token) return json({ error: "Token ausente" }, 401);
 
-  const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: callerData, error: callerErr } = await callerClient.auth.getUser();
-  if (callerErr || !callerData?.user) return json({ error: "Sessão inválida" }, 401);
+  // Cria cliente com a chave anon para validar o JWT do caller via getClaims
+  const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data: claimsData, error: claimsErr } = await callerClient.auth.getClaims(token);
+  if (claimsErr || !claimsData?.claims?.sub) {
+    return json({ error: "Sessão inválida: " + (claimsErr?.message ?? "sem claims") }, 401);
+  }
+  const callerUserId = claimsData.claims.sub as string;
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -67,7 +71,7 @@ Deno.serve(async (req) => {
   const { data: perfil, error: perfilErr } = await admin
     .from("usuarios_perfis")
     .select("tipo_conta, ativo")
-    .eq("user_id", callerData.user.id)
+    .eq("user_id", callerUserId)
     .maybeSingle();
 
   if (perfilErr) return json({ error: "Erro ao verificar perfil: " + perfilErr.message }, 500);
