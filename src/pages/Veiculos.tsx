@@ -57,7 +57,7 @@ export default function Veiculos() {
       const { data } = await supabase
         .from("agendamentos")
         .select("veiculo_id,status")
-        .in("status", ["agendado", "em_uso"]);
+        .eq("status", "ativo");
       setVeiculosOcupados(new Set(((data ?? []) as Agendamento[]).map(a => a.veiculo_id)));
     };
     load();
