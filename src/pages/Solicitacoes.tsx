@@ -257,8 +257,7 @@ export default function Solicitacoes() {
               </Button>
               <Button
                 type="button"
-                variant={activeTab === "fuel" ? "default" : "outline"}
-                className={cn(activeTab === "fuel" && "bg-gradient-brand text-primary-foreground")}
+                variant={activeTab === "fuel" ? "brand" : "outline"}
                 onClick={() => setActiveTab("fuel")}
               >
                 <Fuel className="mr-2 h-4 w-4" />Abastecimento
