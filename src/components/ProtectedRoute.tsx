@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { ModuloPermissao } from "@/lib/types";
+import PendingApproval from "@/pages/PendingApproval";
 
 interface Props {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ interface Props {
 }
 
 export function ProtectedRoute({ children, requireAdmin, requirePerm }: Props) {
-  const { user, loading, isAdmin, mustChangePassword } = useAuth();
+  const { user, loading, isAdmin, mustChangePassword, profileStatus } = useAuth();
   const { canSee } = usePermissions();
   const location = useLocation();
 
@@ -20,6 +21,11 @@ export function ProtectedRoute({ children, requireAdmin, requirePerm }: Props) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Carregando...</div>;
   }
   if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
+
+  // Bloqueia acesso se a conta ainda não foi aprovada (ou foi rejeitada)
+  if (profileStatus === "pendente" || profileStatus === "rejeitado") {
+    return <PendingApproval status={profileStatus} />;
+  }
 
   // Força troca de senha em primeiro acesso
   if (mustChangePassword && location.pathname !== "/setup-senha") {
