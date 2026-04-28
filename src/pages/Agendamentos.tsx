@@ -95,9 +95,10 @@ export default function Agendamentos() {
     return m;
   }, [veiculos]);
 
-  // Apenas agendamentos ATIVOS contam para conflito e visualização de ocupação
+  // Toda reserva que ocupa horário (exclui apenas canceladas e concluídas).
+  // Inclui status legados como "agendado" e "em_uso" para que apareçam na timeline e bloqueiem conflitos.
   const ativos = useMemo(
-    () => rows.filter(r => r.status === "ativo"),
+    () => rows.filter(r => r.status !== "cancelado" && r.status !== "concluido"),
     [rows]
   );
 
