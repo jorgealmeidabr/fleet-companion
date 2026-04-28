@@ -202,6 +202,16 @@ export default function Auth() {
 
         @keyframes brqFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes brqFadeUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes brqGridDrift { from { background-position: 0 0, 0 0; } to { background-position: 42px 42px, 42px 42px; } }
+        @keyframes brqOrbDrift {
+          0%   { transform: translate(0, 0) scale(1); }
+          50%  { transform: translate(-2%, 2%) scale(1.05); }
+          100% { transform: translate(2%, -1%) scale(1); }
+        }
+        @keyframes brqFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
 
         @media (max-width: 768px) {
           .brq-login { flex-direction: column; height: auto; min-height: 100vh; }
