@@ -378,6 +378,14 @@ function UserWizard({
         // Pequena espera para garantir que o trigger handle_new_user já criou profile/role
         await new Promise((r) => setTimeout(r, 400));
 
+        // Garante registro em public.profiles caso o trigger tenha falhado silenciosamente
+        const { error: profileErr } = await (supabase as any)
+          .from("profiles")
+          .upsert({ id: userId, nome, email }, { onConflict: "id" });
+        if (profileErr) {
+          console.warn("Falha ao garantir profile:", profileErr.message);
+        }
+
         let motoristaId = linkId;
 
         if (tipoConta === "admin" && !linkId) {
