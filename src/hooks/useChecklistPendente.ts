@@ -33,7 +33,8 @@ export function useChecklistPendente() {
       .from("agendamentos") as any)
       .select("*, veiculos(placa, modelo)")
       .eq("motorista_id", perfil.motorista_id)
-      .eq("status", "concluido")
+      // Devolução = status "cancelado" + data_retorno_real preenchida (após refator v5)
+      .eq("status", "cancelado")
       .gte("data_retorno_real", desde)
       .not("data_retorno_real", "is", null)
       .order("data_retorno_real", { ascending: false });
