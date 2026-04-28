@@ -102,9 +102,9 @@ Deno.serve(async (req) => {
     tipo_conta, permissoes,
   } = body;
 
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanNome = nome.trim();
-  const cleanCargo = cargo.trim();
+  const cleanEmail = String(email ?? "").trim().toLowerCase();
+  const cleanNome = String(nome ?? "").trim();
+  const cleanCargo = String(cargo ?? "").trim();
   if (!cleanEmail || !senha || !cleanNome || !cleanCargo || !tipo_conta) {
     return json({ error: "Campos obrigatórios ausentes (email, senha, nome, cargo, tipo_conta)" }, 400);
   }
