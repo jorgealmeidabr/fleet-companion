@@ -75,6 +75,11 @@ export function VeiculoChecklistStatus({ veiculoId }: { veiculoId: string }) {
   const nivel = (nivelMatch?.[1]?.toLowerCase() as FuelLevel | undefined) ?? null;
   const fuel = nivel ? FUEL_INFO[nivel] : null;
 
+  // "Limpadores" e "Veículo limpo" não são persistidos como colunas próprias
+  // no banco. Como o checklist marca status global "ok"/"problema" quando todos
+  // os itens da UI estão OK, refletimos esse estado para esses dois campos.
+  const okGlobal = checklist.status === "ok";
+
   return (
     <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
       <div className="flex items-center justify-between">
@@ -87,8 +92,8 @@ export function VeiculoChecklistStatus({ veiculoId }: { veiculoId: string }) {
       <div className="grid gap-2 sm:grid-cols-2">
         <Item label="Pneus" ok={checklist.pneus_ok} />
         <Item label="Faróis e lanternas" ok={checklist.luzes_ok} />
-        <Item label="Limpadores de para-brisa" ok={checklist.nivel_oleo_ok} />
-        <Item label="Veículo limpo" ok={checklist.combustivel_ok || checklist.status === "ok"} />
+        <Item label="Limpadores de para-brisa" ok={okGlobal} />
+        <Item label="Veículo limpo" ok={okGlobal} />
         <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm sm:col-span-2">
           <span className="text-muted-foreground">Nível de combustível</span>
           {fuel ? (
@@ -96,7 +101,10 @@ export function VeiculoChecklistStatus({ veiculoId }: { veiculoId: string }) {
               <span>{fuel.emoji}</span> {fuel.label}
             </span>
           ) : (
-            <Item label="Combustível" ok={checklist.combustivel_ok} />
+            <span className={cn("inline-flex items-center gap-1 font-medium", checklist.combustivel_ok ? "text-success" : "text-destructive")}>
+              {checklist.combustivel_ok ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+              {checklist.combustivel_ok ? "OK" : "Baixo"}
+            </span>
           )}
         </div>
       </div>
