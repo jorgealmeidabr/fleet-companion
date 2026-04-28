@@ -249,8 +249,8 @@ export default function Auth() {
             </form>
           ) : (
             <form className="brq-form" onSubmit={onSignIn} noValidate>
-              <h1 className="brq-title">Acessar sistema</h1>
-              <p className="brq-sub">Entre com suas credenciais para continuar.</p>
+              <h1 className="brq-title">Bem-vindo</h1>
+              <p className="brq-sub">Acesse o sistema com suas credenciais</p>
 
               <div className="brq-field f1">
                 <label htmlFor="se" className="brq-label">E-mail</label>
@@ -274,7 +274,7 @@ export default function Auth() {
               </button>
 
               <p className="brq-note">
-                Acesso restrito. Solicite seu cadastro ao administrador.
+                Acesso restrito da BRQ BrasilQuimia. Solicite seu cadastro ao administrador.
               </p>
             </form>
           )}
