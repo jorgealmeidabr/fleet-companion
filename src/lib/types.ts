@@ -81,6 +81,7 @@ export type Database = {
       has_perm: { Args: { _user_id: string; _modulo: string }; Returns: boolean };
       is_admin_perfil: { Args: { _user_id: string }; Returns: boolean };
       is_perfil_ativo: { Args: { _uid: string }; Returns: boolean };
+      create_pending_profile: { Args: { _user_id: string; _nome: string; _email: string }; Returns: void };
       approve_user: { Args: { _user_id: string; _tipo?: TipoConta; _permissoes?: any; _cargo?: string | null }; Returns: void };
       reject_user: { Args: { _user_id: string }; Returns: void };
     };

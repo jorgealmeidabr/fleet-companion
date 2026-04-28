@@ -46,10 +46,13 @@ export default function Cadastro() {
       if (error) throw error;
 
       if (data.user?.id) {
-        await (supabase as any).from("profiles").upsert(
-          { id: data.user.id, nome, email, status: "pendente" },
-          { onConflict: "id" },
-        );
+        const { error: profileError } = await (supabase as any).rpc("create_pending_profile", {
+          _user_id: data.user.id,
+          _nome: nome,
+          _email: email,
+        });
+
+        if (profileError) throw profileError;
       }
 
       await supabase.auth.signOut();
