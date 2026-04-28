@@ -107,13 +107,16 @@ Deno.serve(async (req) => {
   }
   if (senha.length < 8) return json({ error: "Senha deve ter ao menos 8 caracteres" }, 400);
   if (!["admin", "usuario"].includes(tipo_conta)) return json({ error: "tipo_conta inválido" }, 400);
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanNome = nome.trim();
+  const cleanCargo = cargo.trim();
 
   // 3. Criar usuário no Auth com privilégios administrativos
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email,
+    email: cleanEmail,
     password: senha,
     email_confirm: true,
-    user_metadata: { nome, cargo },
+    user_metadata: { nome: cleanNome, cargo: cleanCargo },
   });
 
   if (createErr || !created?.user) {
@@ -130,12 +133,12 @@ Deno.serve(async (req) => {
   // 4. Garante public.profiles manualmente. Não depende do trigger on_auth_user_created.
   const { error: profileErr } = await admin
     .from("profiles")
-    .upsert({ id: userId, nome, email }, { onConflict: "id" });
+    .upsert({ id: userId, nome: cleanNome, email: cleanEmail }, { onConflict: "id" });
   if (profileErr) return rollback("Erro ao criar profile: " + profileErr.message);
 
   // 5. Admin: promover por RPC e finalizar. Não buscar/alterar motorista depois.
   if (tipo_conta === "admin") {
-    const { error: promoErr } = await admin.rpc("promote_to_admin", { _email: email });
+    const { error: promoErr } = await admin.rpc("promote_to_admin", { _email: cleanEmail });
     if (promoErr) return rollback("Erro ao promover admin: " + promoErr.message);
     return json({ user_id: userId, tipo_conta: "admin" });
   }
@@ -145,10 +148,10 @@ Deno.serve(async (req) => {
     .from("motoristas")
     .insert({
       user_id: userId,
-      nome,
-      email,
+      nome: cleanNome,
+      email: cleanEmail,
       telefone: telefone || null,
-      cargo: cargo || null,
+      cargo: cleanCargo || null,
       cnh_numero: cnh_numero || "00000000000",
       cnh_categoria: cnh_categoria || "B",
       cnh_validade: cnh_validade || fallbackCnhValidade(),
