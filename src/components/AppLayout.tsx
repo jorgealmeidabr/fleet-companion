@@ -25,19 +25,45 @@ interface NavItem {
   perm?: ModuloPermissao;
 }
 
-const items: NavItem[] = [
-  { title: "Dashboard",     url: "/",              icon: LayoutDashboard, perm: "dashboard" },
-  { title: "Veículos",      url: "/veiculos",      icon: Car,             perm: "veiculos" },
-  { title: "Pessoas",       url: "/motoristas",    icon: Users,           perm: "motoristas" },
-  { title: "Manutenção",    url: "/manutencoes",   icon: Wrench,          perm: "manutencao" },
-  { title: "Abastecimento", url: "/abastecimentos", icon: Fuel,           perm: "abastecimento" },
-  { title: "Agendamentos",  url: "/agendamentos",  icon: CalendarRange,   perm: "agendamentos" },
-  { title: "Checklists",    url: "/checklists",    icon: ClipboardCheck,  perm: "checklists" },
-  { title: "Solicitações",  url: "/solicitacoes",  icon: FileText,        perm: "solicitacoes" },
-  { title: "Multas",        url: "/multas",        icon: AlertTriangle,   perm: "multas" },
-  { title: "Histórico",     url: "/historico",     icon: History,         perm: "historico" },
-  { title: "Alertas",       url: "/alertas",       icon: Bell,            perm: "alertas" },
-  { title: "Usuários",      url: "/usuarios",      icon: ShieldCheck,     perm: "usuarios" },
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const groups: NavGroup[] = [
+  {
+    label: "Gestão",
+    items: [
+      { title: "Dashboard",    url: "/",             icon: LayoutDashboard, perm: "dashboard" },
+      { title: "Pessoas",      url: "/motoristas",   icon: Users,           perm: "motoristas" },
+      { title: "Solicitações", url: "/solicitacoes", icon: FileText,        perm: "solicitacoes" },
+      { title: "Histórico",    url: "/historico",    icon: History,         perm: "historico" },
+      { title: "Multas",       url: "/multas",       icon: AlertTriangle,   perm: "multas" },
+      { title: "Usuários",     url: "/usuarios",     icon: ShieldCheck,     perm: "usuarios" },
+    ],
+  },
+  {
+    label: "Operação",
+    items: [
+      { title: "Veículos",      url: "/veiculos",       icon: Car,    perm: "veiculos" },
+      { title: "Manutenção",    url: "/manutencoes",    icon: Wrench, perm: "manutencao" },
+      { title: "Abastecimento", url: "/abastecimentos", icon: Fuel,   perm: "abastecimento" },
+    ],
+  },
+  {
+    label: "Execução",
+    items: [
+      { title: "Agendamentos", url: "/agendamentos", icon: CalendarRange,  perm: "agendamentos" },
+      { title: "Checklists",   url: "/checklists",   icon: ClipboardCheck, perm: "checklists" },
+    ],
+  },
+  {
+    label: "Conta",
+    items: [
+      { title: "Meu perfil", url: "/meu-perfil", icon: UserCircle2 },
+      { title: "Alertas",    url: "/alertas",    icon: Bell, perm: "alertas" },
+    ],
+  },
 ];
 
 function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestCount: number }) {
