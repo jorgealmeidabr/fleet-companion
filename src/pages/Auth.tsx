@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { useNavigate, Navigate, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { validarEmail } from "@/lib/validators";
-import brqLogo from "@/assets/brq-logo-full.jpeg";
+import brqLogo from "@/assets/brq-logo-login.png";
 
 export default function Auth() {
   const { user, signIn } = useAuth();
@@ -16,7 +13,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
-  const [signinErrors, setSigninErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   if (!isSupabaseConfigured) return <Navigate to="/setup" replace />;
   if (user) return <Navigate to="/" replace />;
@@ -30,7 +27,7 @@ export default function Auth() {
       email: validarEmail(email) ?? undefined,
       password: password.length < 6 ? "Senha mínima 6 caracteres" : undefined,
     };
-    setSigninErrors(errs);
+    setErrors(errs);
     if (errs.email || errs.password) return;
     setLoading(true);
     const { error } = await signIn(email, password);
@@ -52,124 +49,215 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      {/* Lado esquerdo - Logo (amarelo com animação) */}
-      <div className="relative flex items-center justify-center overflow-hidden bg-[#FFD600] p-8 md:w-[65%] md:p-12">
-        {/* Padrão animado de formas geométricas */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <span className="absolute left-[10%] top-[15%] h-24 w-24 rounded-full bg-[#E6C200] opacity-60 animate-float-slow" />
-          <span className="absolute right-[15%] top-[25%] h-16 w-16 rotate-45 bg-[#E6C200] opacity-50 animate-float-medium" />
-          <span className="absolute left-[20%] bottom-[20%] h-32 w-32 rounded-full bg-[#E6C200] opacity-40 animate-float-fast" />
-          <span className="absolute right-[25%] bottom-[15%] h-20 w-20 rotate-45 bg-[#E6C200] opacity-50 animate-float-slow" />
-          <span className="absolute left-[45%] top-[60%] h-12 w-12 rounded-full bg-[#E6C200] opacity-60 animate-float-medium" />
-          <span className="absolute right-[40%] top-[10%] h-14 w-14 rotate-45 bg-[#E6C200] opacity-40 animate-float-fast" />
-          <span className="absolute left-[5%] bottom-[40%] h-10 w-10 rounded-full bg-[#E6C200] opacity-50 animate-float-medium" />
-          <span className="absolute right-[5%] top-[55%] h-20 w-20 rounded-full bg-[#E6C200] opacity-40 animate-float-slow" />
-        </div>
-        <img
-          src={brqLogo}
-          alt="BRQ Frota Interna"
-          style={{ mixBlendMode: "multiply" }}
-          className="relative z-10 max-h-48 w-auto max-w-md object-contain md:max-h-[60vh]"
-        />
-      </div>
+    <>
+      <style>{`
+        .brq-login { font-family: 'Barlow', sans-serif; height: 100vh; width: 100vw; display: flex; overflow: hidden; }
 
-      {/* Lado direito - Formulário (escuro) */}
-      <div className="flex flex-1 items-center justify-center bg-[#1a1a1a] p-6 md:w-[35%] md:p-10">
-        <div className="w-full max-w-sm">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-white text-center">
-              {forgot ? "Recuperar senha" : "Acessar sistema"}
-            </h1>
-            <p className="mt-2 text-sm text-white/60 text-center">
-              {forgot
-                ? "Enviaremos um link para redefinir sua senha."
-                : "Entre com suas credenciais para continuar."}
-            </p>
+        /* ===== Painel esquerdo ===== */
+        .brq-left {
+          flex: 1;
+          position: relative;
+          background-color: #0a0c0f;
+          background-image:
+            radial-gradient(ellipse 70% 60% at 58% 52%, rgba(212,160,23,0.52) 0%, transparent 70%);
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: brqFadeIn 1s ease both;
+        }
+        .brq-left::before {
+          content: "";
+          position: absolute; inset: 0;
+          background-image:
+            linear-gradient(to right, rgba(255,255,255,0.055) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.055) 1px, transparent 1px);
+          background-size: 42px 42px;
+          pointer-events: none;
+        }
+        .brq-eyebrow {
+          position: absolute;
+          top: 28px; left: 36px;
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.45);
+          font-weight: 300;
+          z-index: 2;
+        }
+        .brq-logo-wrap {
+          position: relative; z-index: 2;
+          display: flex; flex-direction: column; align-items: center; gap: 14px;
+        }
+        .brq-logo {
+          max-width: 460px; width: 100%; height: auto;
+          filter: brightness(0) invert(1);
+          mix-blend-mode: screen;
+        }
+        .brq-tagline {
+          font-family: 'Barlow', sans-serif;
+          font-style: italic;
+          color: #d4a017;
+          font-size: 20px;
+          font-weight: 400;
+          margin: 0;
+        }
+
+        /* ===== Painel direito ===== */
+        .brq-right {
+          width: 360px;
+          flex-shrink: 0;
+          background: #14171d;
+          border-left: 1px solid rgba(255,255,255,0.07);
+          display: flex; align-items: center; justify-content: center;
+          padding: 40px 32px;
+        }
+        .brq-form { width: 100%; }
+        .brq-title {
+          font-family: 'Barlow', sans-serif;
+          font-weight: 700;
+          font-size: 26px;
+          color: #fff;
+          text-align: center;
+          margin: 0 0 8px;
+          animation: brqFadeUp 0.6s ease both; animation-delay: .10s;
+        }
+        .brq-sub {
+          font-size: 13px; color: #9ca3af;
+          text-align: center;
+          margin: 0 0 36px;
+          animation: brqFadeUp 0.6s ease both; animation-delay: .18s;
+        }
+        .brq-field { margin-bottom: 16px; animation: brqFadeUp 0.6s ease both; }
+        .brq-field.f1 { animation-delay: .26s; }
+        .brq-field.f2 { animation-delay: .34s; }
+        .brq-label {
+          display: block;
+          font-size: 13px; font-weight: 600;
+          color: rgba(255,255,255,0.75);
+          margin-bottom: 6px;
+        }
+        .brq-input {
+          width: 100%;
+          background: #1e2128;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 7px;
+          height: 48px;
+          padding: 0 14px;
+          color: #fff;
+          font-family: 'Barlow', sans-serif;
+          font-size: 14px;
+          outline: none;
+          transition: border-color .15s, box-shadow .15s;
+          box-sizing: border-box;
+        }
+        .brq-input::placeholder { color: rgba(255,255,255,0.3); }
+        .brq-input:focus {
+          border-color: rgba(212,160,23,0.5);
+          box-shadow: 0 0 0 3px rgba(212,160,23,0.1);
+        }
+        .brq-error { color: #f87171; font-size: 11.5px; margin-top: 4px; }
+
+        .brq-btn {
+          width: 100%; height: 50px; margin-top: 8px;
+          background: #f5c400; color: #0a0c0f;
+          font-family: 'Barlow', sans-serif;
+          font-weight: 700; font-size: 15px;
+          border-radius: 7px; border: none; cursor: pointer;
+          transition: background .15s, transform .05s;
+          animation: brqFadeUp 0.6s ease both; animation-delay: .42s;
+        }
+        .brq-btn:hover { background: #e6b800; }
+        .brq-btn:active { transform: scale(0.98); }
+        .brq-btn:disabled { opacity: .7; cursor: not-allowed; }
+
+        .brq-link {
+          display: block; width: 100%;
+          background: none; border: none; cursor: pointer;
+          text-align: center; margin-top: 18px;
+          font-size: 13px; color: #9ca3af;
+          font-family: 'Barlow', sans-serif;
+          transition: color .15s;
+          animation: brqFadeUp 0.6s ease both; animation-delay: .48s;
+        }
+        .brq-link:hover { color: #d4a017; }
+
+        .brq-note {
+          text-align: center; margin-top: 20px;
+          font-size: 11.5px; color: #6b7280;
+          animation: brqFadeUp 0.6s ease both; animation-delay: .52s;
+        }
+
+        @keyframes brqFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes brqFadeUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+          .brq-login { flex-direction: column; height: auto; min-height: 100vh; }
+          .brq-right { width: 100%; }
+          .brq-left { min-height: 40vh; padding: 80px 20px 40px; }
+          .brq-logo { max-width: 280px; }
+        }
+      `}</style>
+
+      <div className="brq-login">
+        <div className="brq-left">
+          <div className="brq-eyebrow">SISTEMA DE FROTAS EMPRESARIAIS</div>
+          <div className="brq-logo-wrap">
+            <img src={brqLogo} alt="BRQ Frota Interna" className="brq-logo" />
+            <p className="brq-tagline">Nós alimentamos o mundo!</p>
           </div>
+        </div>
 
+        <aside className="brq-right">
           {forgot ? (
-            <form onSubmit={onForgot} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="fe" className="text-white/80">E-mail</Label>
-                <Input
-                  id="fe"
-                  type="email"
-                  required
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
-                />
+            <form className="brq-form" onSubmit={onForgot}>
+              <h1 className="brq-title">Recuperar senha</h1>
+              <p className="brq-sub">Enviaremos um link para redefinir sua senha.</p>
+              <div className="brq-field f1">
+                <label htmlFor="fe" className="brq-label">E-mail</label>
+                <input id="fe" type="email" required value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)} className="brq-input" />
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-[#FFD600] font-semibold text-black hover:bg-[#FFC700]"
-                disabled={loading}
-              >
+              <button type="submit" className="brq-btn" disabled={loading}>
                 {loading ? "Enviando..." : "Enviar link"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full text-white/70 hover:bg-white/5 hover:text-white"
-                onClick={() => setForgot(false)}
-              >
+              </button>
+              <button type="button" className="brq-link" onClick={() => setForgot(false)}>
                 Voltar
-              </Button>
+              </button>
             </form>
           ) : (
-            <form onSubmit={onSignIn} className="space-y-4" noValidate>
-              <div className="space-y-1.5">
-                <Label htmlFor="se" className="text-white/80">E-mail</Label>
-                <Input
-                  id="se"
-                  name="email"
-                  type="email"
-                  required
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
-                  onBlur={(e) =>
-                    setSigninErrors((s) => ({ ...s, email: validarEmail(e.target.value) ?? undefined }))
-                  }
-                />
-                {signinErrors.email && <p className="text-xs text-destructive">{signinErrors.email}</p>}
+            <form className="brq-form" onSubmit={onSignIn} noValidate>
+              <h1 className="brq-title">Acessar sistema</h1>
+              <p className="brq-sub">Entre com suas credenciais para continuar.</p>
+
+              <div className="brq-field f1">
+                <label htmlFor="se" className="brq-label">E-mail</label>
+                <input id="se" name="email" type="email" required className="brq-input"
+                  onBlur={(e) => setErrors((s) => ({ ...s, email: validarEmail(e.target.value) ?? undefined }))} />
+                {errors.email && <div className="brq-error">{errors.email}</div>}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="sp" className="text-white/80">Senha</Label>
-                <Input
-                  id="sp"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
-                />
-                {signinErrors.password && <p className="text-xs text-destructive">{signinErrors.password}</p>}
+
+              <div className="brq-field f2">
+                <label htmlFor="sp" className="brq-label">Senha</label>
+                <input id="sp" name="password" type="password" required minLength={6} className="brq-input" />
+                {errors.password && <div className="brq-error">{errors.password}</div>}
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-[#FFD600] font-semibold text-black hover:bg-[#FFC700]"
-                disabled={loading}
-              >
+
+              <button type="submit" className="brq-btn" disabled={loading}>
                 {loading ? "Entrando..." : "Entrar"}
-              </Button>
-              <button
-                type="button"
-                className="block w-full text-center text-xs text-white/50 hover:text-white"
-                onClick={() => setForgot(true)}
-              >
+              </button>
+
+              <button type="button" className="brq-link" onClick={() => setForgot(true)}>
                 Esqueceu a senha?
               </button>
-              <p className="pt-2 text-center text-[11px] text-white/40">
+
+              <p className="brq-note">
                 Acesso restrito. Solicite seu cadastro ao administrador.
               </p>
             </form>
           )}
-
-          <p className="mt-8 text-center text-[11px] text-white/30">
-            <Link to="/setup" className="hover:text-white/60">​</Link>
-          </p>
-        </div>
+        </aside>
       </div>
-    </div>
+    </>
   );
 }
