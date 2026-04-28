@@ -238,30 +238,7 @@ export default function Dashboard() {
       </div>
       </ErrorBoundary>
 
-      <Card className="mt-6 shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Bell className="h-4 w-4" /> Alertas inteligentes
-            {alertas.length > 0 && <Badge variant="destructive">{alertas.length}</Badge>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {alertas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">✓ Nenhum alerta no momento.</p>
-          ) : (
-            <ul className="space-y-2">
-              {alertas.map((a, i) => (
-                <li key={i} className="flex items-center justify-between rounded-md border border-border p-2 text-sm">
-                  <span className="flex items-center gap-2">
-                    <Badge variant={a.nivel === "danger" ? "destructive" : "outline"} className={a.nivel === "warning" ? "border-warning/30 bg-warning/10 text-warning" : ""}>{a.tipo}</Badge>
-                    <span>{a.msg}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <DashboardHistorico />
     </>
   );
 }
