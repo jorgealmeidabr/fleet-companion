@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DashboardHistorico } from "@/components/DashboardHistorico";
 import { differenceInDays, parseISO, format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
 // Safe wrappers — never throw on null/invalid dates
