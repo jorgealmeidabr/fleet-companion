@@ -49,17 +49,41 @@ export default function Veiculos() {
   const [fStatus, setFStatus] = useState<string>("todos");
   const [fTipo, setFTipo] = useState<string>("todos");
   const [fComb, setFComb] = useState<string>("todos");
+  const [veiculosOcupados, setVeiculosOcupados] = useState<Set<string>>(new Set());
+
+  // Fonte de verdade: veículos com agendamento ativo/em_uso são "reservado"
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("veiculo_id,status")
+        .in("status", ["agendado", "em_uso"]);
+      setVeiculosOcupados(new Set(((data ?? []) as Agendamento[]).map(a => a.veiculo_id)));
+    };
+    load();
+    const channel = supabase
+      .channel("veiculos-agendamentos-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // Deriva status efetivo: se há agendamento ativo, força "reservado"
+  const rowsEfetivos = useMemo<Veiculo[]>(() => rows.map(v => {
+    if (v.status === "manutencao" || v.status === "inativo") return v;
+    return veiculosOcupados.has(v.id) ? { ...v, status: "reservado" as Veiculo["status"] } : v;
+  }), [rows, veiculosOcupados]);
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return rows.filter(v => {
+    return rowsEfetivos.filter(v => {
       if (q && !v.placa.toLowerCase().includes(q) && !v.modelo.toLowerCase().includes(q)) return false;
       if (fStatus !== "todos" && v.status !== fStatus) return false;
       if (fTipo !== "todos" && v.tipo !== fTipo) return false;
       if (fComb !== "todos" && v.combustivel !== fComb) return false;
       return true;
     });
-  }, [rows, busca, fStatus, fTipo, fComb]);
+  }, [rowsEfetivos, busca, fStatus, fTipo, fComb]);
 
   return (
     <>
