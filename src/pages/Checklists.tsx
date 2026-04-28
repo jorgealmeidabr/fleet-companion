@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { uploadFiles } from "@/lib/storage";
 import { fmtDate } from "@/lib/format";
 import type { Checklist, Veiculo, Motorista } from "@/lib/types";
-import { Check, X, Upload, Plus, Camera } from "lucide-react";
+import { Check, X, Upload, Plus, Camera, Fuel } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,19 +16,36 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
+import { cn } from "@/lib/utils";
 
-const ITEMS: { key: keyof Pick<Checklist, "pneus_ok" | "luzes_ok" | "combustivel_ok" | "nivel_oleo_ok">; label: string; hint: string }[] = [
+// Itens visuais (apenas UI). Apenas os que correspondem a colunas no banco são persistidos diretamente.
+const ITEMS: { key: keyof Pick<Checklist, "pneus_ok" | "luzes_ok">; label: string; hint: string }[] = [
   { key: "pneus_ok", label: "Pneus", hint: "Calibrados e sem furos" },
   { key: "luzes_ok", label: "Faróis e lanternas", hint: "Funcionando corretamente" },
-  { key: "combustivel_ok", label: "Combustível", hint: "Nível adequado" },
-  { key: "nivel_oleo_ok", label: "Nível de óleo", hint: "Dentro da faixa recomendada" },
 ];
 
-// extras (não persistidos no banco) – exibidos no UI conforme briefing
+// Itens extras (somente UI)
 const EXTRAS = [
   { key: "limpadores_ok", label: "Limpadores de para-brisa", hint: "Operando" },
-  { key: "documentos_ok", label: "Documentos no veículo", hint: "CRLV e seguro em dia" },
+  { key: "veiculo_limpo", label: "Veículo limpo", hint: "Interior e exterior em ordem" },
 ];
+
+type FuelLevel = "vazio" | "meio" | "cheio";
+const FUEL_LEVELS: { value: FuelLevel; label: string; color: string; emoji: string }[] = [
+  { value: "vazio", label: "Quase vazio (0–25%)", color: "border-destructive bg-destructive/10 text-destructive", emoji: "🟥" },
+  { value: "meio",  label: "Meio (25–75%)",        color: "border-warning bg-warning/10 text-warning",            emoji: "🟨" },
+  { value: "cheio", label: "Cheio (75–100%)",      color: "border-success bg-success/10 text-success",            emoji: "🟩" },
+];
+
+const NIVEL_REGEX = /^\[Nível combustível: (vazio|meio|cheio)\]\s*/i;
+
+function parseNivel(obs: string | null): { nivel: FuelLevel | null; resto: string } {
+  if (!obs) return { nivel: null, resto: "" };
+  const m = obs.match(NIVEL_REGEX);
+  if (!m) return { nivel: null, resto: obs };
+  return { nivel: m[1].toLowerCase() as FuelLevel, resto: obs.replace(NIVEL_REGEX, "") };
+}
 
 export default function Checklists() {
   const { rows, loading, insert, remove, reload } = useTable<Checklist>("checklists");
@@ -39,7 +56,7 @@ export default function Checklists() {
 
   useEffect(() => {
     supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[]));
-    supabase.from("motoristas").select("*").then(({ data }) => setMotoristas((data ?? []) as Motorista[]));
+    supabase.from("motoristas").select("*").order("nome").then(({ data }) => setMotoristas((data ?? []) as Motorista[]));
   }, []);
 
   const vL = (id: string) => veiculos.find(x => x.id === id)?.placa ?? "—";
@@ -52,10 +69,9 @@ export default function Checklists() {
     data: new Date().toISOString().slice(0, 10),
     pneus_ok: true,
     luzes_ok: true,
-    combustivel_ok: true,
-    nivel_oleo_ok: true,
+    nivel_combustivel: "cheio" as FuelLevel,
     limpadores_ok: true,
-    documentos_ok: true,
+    veiculo_limpo: true,
     observacoes: "",
     fotos: [] as File[],
     fotos_urls: [] as string[],
@@ -66,11 +82,15 @@ export default function Checklists() {
 
   const set = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
 
+  const combustivel_ok = form.nivel_combustivel !== "vazio";
+
   const autoStatus = useMemo(() => {
-    const allOk = ITEMS.every(i => form[i.key] as boolean) && EXTRAS.every(e => (form as any)[e.key]);
+    const allOk = ITEMS.every(i => form[i.key] as boolean)
+      && EXTRAS.every(e => (form as any)[e.key])
+      && combustivel_ok;
     const obsCritica = /(quebrad|grave|urgente|vazamento|perigo)/i.test(form.observacoes || "");
     return allOk && !obsCritica ? "ok" : "problema";
-  }, [form]);
+  }, [form, combustivel_ok]);
 
   const handlePhotos = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -94,15 +114,18 @@ export default function Checklists() {
     if (!form.veiculo_id) return toast({ title: "Selecione um veículo", variant: "destructive" });
     setSaving(true);
     try {
+      // Persistimos o nível como prefixo das observações para não depender de migração.
+      const obsFinal = `[Nível combustível: ${form.nivel_combustivel}]${form.observacoes ? " " + form.observacoes : ""}`;
       await insert({
         veiculo_id: form.veiculo_id,
         motorista_id: form.motorista_id || null,
         data: form.data,
         pneus_ok: form.pneus_ok,
         luzes_ok: form.luzes_ok,
-        combustivel_ok: form.combustivel_ok,
-        nivel_oleo_ok: form.nivel_oleo_ok,
-        observacoes: form.observacoes || null,
+        combustivel_ok,
+        // colunas removidas da UI continuam existindo no banco — preenchidas como true para não bloquear
+        nivel_oleo_ok: true,
+        observacoes: obsFinal,
         fotos_urls: form.fotos_urls.length ? form.fotos_urls : null,
         status: autoStatus,
       } as any);
@@ -140,10 +163,11 @@ export default function Checklists() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Motorista</Label>
-                    <Select value={form.motorista_id} onValueChange={(v) => set("motorista_id", v)}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>{motoristas.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <MotoristaAutocomplete
+                      motoristas={motoristas}
+                      value={form.motorista_id}
+                      onChange={(id) => set("motorista_id", id)}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Data *</Label>
@@ -166,6 +190,31 @@ export default function Checklists() {
                         />
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-semibold">
+                    <Fuel className="h-4 w-4" /> Nível de combustível
+                  </Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {FUEL_LEVELS.map(lvl => {
+                      const active = form.nivel_combustivel === lvl.value;
+                      return (
+                        <button
+                          key={lvl.value}
+                          type="button"
+                          onClick={() => set("nivel_combustivel", lvl.value)}
+                          className={cn(
+                            "flex flex-col items-center gap-1 rounded-lg border-2 p-3 text-xs font-medium transition",
+                            active ? lvl.color : "border-border bg-card text-muted-foreground hover:bg-accent",
+                          )}
+                        >
+                          <span className="text-2xl leading-none">{lvl.emoji}</span>
+                          <span className="text-center leading-tight">{lvl.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -217,8 +266,13 @@ export default function Checklists() {
           { header: "Motorista", cell: r => mL(r.motorista_id) },
           { header: "Pneus", cell: r => <Mark ok={r.pneus_ok} /> },
           { header: "Luzes", cell: r => <Mark ok={r.luzes_ok} /> },
-          { header: "Combust.", cell: r => <Mark ok={r.combustivel_ok} /> },
-          { header: "Óleo", cell: r => <Mark ok={r.nivel_oleo_ok} /> },
+          { header: "Combust.", cell: r => {
+            const { nivel } = parseNivel(r.observacoes);
+            const lvl = FUEL_LEVELS.find(l => l.value === nivel);
+            return lvl
+              ? <span title={lvl.label}>{lvl.emoji}</span>
+              : <Mark ok={r.combustivel_ok} />;
+          }},
           { header: "Status", cell: r => <StatusBadge status={r.status} /> },
           { header: "Fotos", cell: r => (
             r.fotos_urls?.length ? (
