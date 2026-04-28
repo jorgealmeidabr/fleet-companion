@@ -122,7 +122,7 @@ export default function MeuPerfil() {
                 <Input value={mot?.cargo ?? ""} onChange={e => updateField("cargo", e.target.value)} />
               </div>
             </div>
-            <Button onClick={salvar} disabled={saving} className="bg-gradient-brand text-primary-foreground">
+            <Button onClick={salvar} disabled={saving} variant="brand">
               {saving ? "Salvando..." : "Salvar alterações"}
             </Button>
           </CardContent>
