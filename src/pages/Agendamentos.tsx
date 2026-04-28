@@ -274,7 +274,9 @@ export default function Agendamentos() {
       await reloadVeiculos();
       setReturning(null);
       setRetForm({});
-      toast({ title: "Devolução registrada", description: "Lembre-se: o checklist pós-uso é obrigatório." });
+      playReturnBeeps();
+      toast({ title: "Devolução registrada", description: "Finalize o checklist para concluir o processo." });
+      navigate("/checklists");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
