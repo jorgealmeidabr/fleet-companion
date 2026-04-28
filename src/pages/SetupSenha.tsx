@@ -47,7 +47,7 @@ export default function SetupSenha() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-dark p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-3 text-white">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-brand shadow-elevated">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-brand shadow-elevated bg-warning">
             <Truck className="h-6 w-6" />
           </div>
           <div className="text-left">
@@ -78,7 +78,7 @@ export default function SetupSenha() {
                 <Req ok={c.num} label="1 número" />
                 <Req ok={!!p1 && p1 === p2} label="Senhas iguais" />
               </ul>
-              <Button type="submit" disabled={!ok || loading} className="w-full bg-gradient-brand text-primary-foreground">
+              <Button type="submit" disabled={!ok || loading} variant="brand" className="w-full">
                 {loading ? "Salvando..." : "Salvar e entrar"}
               </Button>
             </form>

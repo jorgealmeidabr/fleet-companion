@@ -454,7 +454,7 @@ export default function Agendamentos() {
                             </Button>
                           )}
                           {(isAdmin || ehDono) && (
-                            <Button size="sm" className="bg-gradient-brand text-primary-foreground"
+                            <Button size="sm" variant="brand"
                               onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
                               <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
                             </Button>
@@ -596,7 +596,7 @@ export default function Agendamentos() {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setPickedVeiculo(null); setForm({}); }}>Cancelar</Button>
             <Button
-              className="bg-gradient-brand text-primary-foreground"
+              variant="brand"
               disabled={!!conflito}
               onClick={confirmarAgendamento}
             >
@@ -651,7 +651,7 @@ export default function Agendamentos() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
-            <Button className="bg-gradient-brand text-primary-foreground" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
+            <Button variant="brand" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
               {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
             </Button>
           </DialogFooter>

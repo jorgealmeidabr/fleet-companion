@@ -145,7 +145,7 @@ export default function Checklists() {
         actions={
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setForm(initial); }}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Novo checklist</Button>
+              <Button variant="brand"><Plus className="mr-1 h-4 w-4" />Novo checklist</Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
               <DialogHeader>
@@ -250,7 +250,7 @@ export default function Checklists() {
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                  <Button type="submit" disabled={saving || uploading} className="bg-gradient-brand text-primary-foreground">{saving ? "Salvando..." : "Salvar checklist"}</Button>
+                  <Button type="submit" disabled={saving || uploading} variant="brand">{saving ? "Salvando..." : "Salvar checklist"}</Button>
                 </DialogFooter>
               </form>
             </DialogContent>

@@ -96,7 +96,7 @@ export function FormDialog<T extends Record<string, any>>({
     <Dialog open={isOpen} onOpenChange={(v) => { setOpen(v); if (v) setValues({ ...initial }); }}>
       {!isControlled && (
         <DialogTrigger asChild>
-          {trigger ?? <Button className="bg-gradient-brand text-primary-foreground"><Plus className="mr-1 h-4 w-4" />Novo</Button>}
+          {trigger ?? <Button variant="brand"><Plus className="mr-1 h-4 w-4" />Novo</Button>}
         </DialogTrigger>
       )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -147,7 +147,7 @@ export function FormDialog<T extends Record<string, any>>({
           ))}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving || !!uploading} className="bg-gradient-brand text-primary-foreground">{saving ? "Salvando..." : submitLabel}</Button>
+            <Button type="submit" disabled={saving || !!uploading} variant="brand">{saving ? "Salvando..." : submitLabel}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

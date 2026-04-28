@@ -40,7 +40,7 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-dark p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-3 text-white">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-brand shadow-elevated">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-brand shadow-elevated bg-warning">
             <Truck className="h-6 w-6" />
           </div>
           <div className="text-left">
@@ -66,7 +66,7 @@ export default function ResetPassword() {
                   <Label htmlFor="cp">Confirmar senha</Label>
                   <Input id="cp" type="password" minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
                 </div>
-                <Button type="submit" className="w-full bg-gradient-brand text-primary-foreground" disabled={loading}>
+                <Button type="submit" variant="brand" className="w-full" disabled={loading}>
                   {loading ? "Salvando..." : "Atualizar senha"}
                 </Button>
               </form>
