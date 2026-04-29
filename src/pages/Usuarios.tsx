@@ -131,17 +131,14 @@ export default function Usuarios() {
   };
 
   const aprovar = async (p: PendingProfile, tipo: "admin" | "usuario") => {
-    const { data, error } = await supabase.functions.invoke("admin-approve-user", {
-      body: {
-        user_id: p.id,
-        tipo,
-        cargo: p.cargo_pretendido,
-        permissoes: null,
-      },
+    const { error } = await (supabase as any).rpc("approve_user", {
+      _user_id: p.id,
+      _tipo: tipo,
+      _permissoes: null,
+      _cargo: p.cargo_pretendido,
     });
-    if (error || (data as any)?.error) {
-      const msg = (data as any)?.error ?? error?.message ?? "Erro desconhecido";
-      toast({ title: "Erro ao aprovar", description: msg, variant: "destructive" });
+    if (error) {
+      toast({ title: "Erro ao aprovar", description: error.message, variant: "destructive" });
       return;
     }
     toast({ title: "Usuário aprovado", description: `${p.nome ?? p.email} agora pode acessar o sistema.` });
