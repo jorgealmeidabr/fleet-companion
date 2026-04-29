@@ -20,6 +20,7 @@ import { validarPlaca, formatarPlaca, validarAno } from "@/lib/validators";
 import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { janelaOcupada } from "@/lib/agendamento";
 
 
 const fields: FieldDef[] = [
