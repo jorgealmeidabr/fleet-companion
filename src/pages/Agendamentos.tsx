@@ -24,6 +24,7 @@ import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { uploadFiles } from "@/lib/storage";
 import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
 import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
+import { janelaOcupada } from "@/lib/agendamento";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -186,16 +187,20 @@ export default function Agendamentos() {
 
   const eventosNoDia = useMemo(() => {
     if (!selectedDay) return [];
-    return ativos.filter(a => inRange(selectedDay, a.data_saida, a.data_retorno_prevista));
+    const d0 = new Date(selectedDay); d0.setHours(0, 0, 0, 0);
+    const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
+    return ativos.filter(a => {
+      const { inicio, fim } = janelaOcupada(a);
+      return inicio < d1 && fim > d0;
+    });
   }, [selectedDay, ativos]);
 
   const diasComEvento = useMemo(() => {
     const set = new Set<string>();
     ativos.forEach(a => {
-      const start = new Date(a.data_saida);
-      const end = new Date(a.data_retorno_prevista);
-      const cur = new Date(start); cur.setHours(0, 0, 0, 0);
-      const last = new Date(end); last.setHours(0, 0, 0, 0);
+      const { inicio, fim } = janelaOcupada(a);
+      const cur = new Date(inicio); cur.setHours(0, 0, 0, 0);
+      const last = new Date(fim); last.setHours(0, 0, 0, 0);
       while (cur <= last) {
         set.add(cur.toISOString().slice(0, 10));
         cur.setDate(cur.getDate() + 1);
@@ -211,11 +216,11 @@ export default function Agendamentos() {
     const fim = new Date(form.data_retorno_prevista);
     if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) return null;
     if (fim <= inicio) return { tipo: "ordem" as const };
-    const choque = ativos.find(a =>
-      a.veiculo_id === pickedVeiculo.id &&
-      inicio < new Date(a.data_retorno_prevista) &&
-      fim > new Date(a.data_saida)
-    );
+    const choque = ativos.find(a => {
+      if (a.veiculo_id !== pickedVeiculo.id) return false;
+      const j = janelaOcupada(a);
+      return inicio < j.fim && fim > j.inicio;
+    });
     return choque ? { tipo: "overlap" as const, agendamento: choque } : null;
   }, [pickedVeiculo, form.data_saida, form.data_retorno_prevista, ativos]);
 
