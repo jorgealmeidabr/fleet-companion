@@ -1,32 +1,48 @@
-## Plano: Validação anti-fraude do "Km de retorno"
+## Plano: Status em tempo real nos cards de Veículos
 
 ### Objetivo
-No modal "Registrar devolução" (`src/pages/Agendamentos.tsx`), impedir que o usuário confirme a devolução quando o `Km de retorno` for menor que o `Km de saída` do agendamento. Hoje existe apenas um `toast` na função `confirmarDevolucao` — vamos reforçar com validação inline e bloqueio do botão.
+Na página `/veiculos`:
+1. Trocar o subtítulo para **"Estado da frota em tempo real"**.
+2. Em cada card, exibir informação contextual conforme o status efetivo:
+   - **Disponível** → sem alteração.
+   - **Reservado** (agendamento futuro, ainda não iniciado) → mostrar nome do motorista e horário de início no formato `HH:mm`.
+   - **Em uso** (agendamento ativo cujo `data_saida` já passou e `data_retorno_real` ainda é nulo) → badge azul "Em uso" + nome do motorista + tempo decorrido (ex: `Em uso há 1h30m`).
 
-### Arquivo alterado
-Apenas **`src/pages/Agendamentos.tsx`**.
+### Arquivo principal
+`src/pages/Veiculos.tsx`.
 
 ### Mudanças
 
-1. **Cálculo derivado no render do modal** (logo antes do JSX do `Dialog` de devolução):
-   - `const kmSaida = returning?.km_saida ?? 0;`
-   - `const kmRetorno = retForm.km_retorno;`
-   - `const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno < kmSaida;`
+1. **Subtítulo** (linha 92): `subtitle="Estado da frota em tempo real"`.
 
-2. **Mensagem de erro inline** abaixo do `Input` de Km de retorno (linha ~762):
-   - Quando `kmInvalido` for `true`, exibir:
-     > "Km de retorno inválido. O valor não pode ser menor que o Km de saída."
-   - Estilo: `text-xs text-destructive` (mesmo padrão usado em `FormDialog`).
-   - Adicionar `aria-invalid={kmInvalido}` e borda destrutiva no `Input` (`className={kmInvalido ? "border-destructive" : ""}`).
+2. **Carregar agendamentos completos** (substituir o `useEffect` atual, linhas 52–69):
+   - Em vez de só `Set<veiculo_id>`, manter um `Map<veiculo_id, { motoristaNome, dataSaida, status }>`.
+   - Query: `from("agendamentos").select("veiculo_id,data_saida,motorista_id,status").eq("status","ativo")` + join via segunda query em `motoristas` para pegar `nome` (ou `select("veiculo_id,data_saida,motoristas(nome)")` se houver FK; usar fallback com segunda chamada se necessário).
+   - Manter o canal realtime já existente.
 
-3. **Bloquear o botão "Confirmar devolução"** (linha ~795):
-   - Adicionar `kmInvalido || kmRetorno == null` ao `disabled` existente:
-     `disabled={savingDevolucao || uploadingFoto || kmInvalido || kmRetorno == null}`
+3. **Status efetivo** (linhas 71–75): 
+   - Para cada veículo com agendamento ativo, comparar `data_saida` com `now`:
+     - `data_saida <= now` → status efetivo `"em_uso"`.
+     - `data_saida > now` → status efetivo `"reservado"`.
+   - Manter `manutencao` / `inativo` intactos.
+   - Acrescentar um `useState` que guarda um `tick` atualizado a cada 60s para que "há 1h30m" e a transição reservado→em_uso recalculem automaticamente (`useEffect` com `setInterval(..., 60_000)`).
 
-4. **Atualizar a mensagem do toast** em `confirmarDevolucao` (linha 321) para o texto completo solicitado, mantendo a checagem como segunda linha de defesa:
-   > "Km de retorno inválido. O valor não pode ser menor que o Km de saída."
+4. **StatusBadge "Em uso" azul** (`src/components/StatusBadge.tsx`): trocar a classe de `em_uso` de warning (amarelo) para info (azul):
+   - `em_uso: { label: "Em uso", className: "bg-info/15 text-info border-info/20" }`
 
-### Comportamento resultante
-- Enquanto o KM digitado for menor que o KM de saída, aparece mensagem vermelha embaixo do campo, o `Input` ganha borda vermelha e o botão "Confirmar devolução" fica desabilitado.
-- Se por qualquer motivo a chamada chegar a `confirmarDevolucao`, o `toast` destrutivo bloqueia a submissão.
-- Nenhuma outra lógica (foto do hodômetro, status, navegação para checklist) é alterada.
+5. **Renderização nos cards** (dentro de `<CardContent>`, após a linha "tipo · combustível"):
+   - Se status efetivo = `"reservado"` e há info de agendamento:
+     `Reservado para {nome} • {HH:mm}` (formatado de `data_saida`).
+   - Se status efetivo = `"em_uso"`:
+     `Em uso por {nome} • há {Xh Ym}`.
+   - Texto compacto, `text-xs text-muted-foreground` (nome em `text-foreground font-medium`).
+
+6. **Helpers locais** (no topo do arquivo ou em `src/lib/format.ts`):
+   - `formatHHmm(iso: string)` → usa `Date` + `toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})`.
+   - `formatDuracao(desdeISO: string, now: number)` → calcula diferença e retorna `"1h30m"`, `"45m"`, `"2h"` etc.
+
+### Observações
+- Os dados já estão em `agendamentos` + `motoristas`; nenhuma migration é necessária.
+- O realtime já existente no canal `agendamentos` recarrega o mapa quando algo muda (criação, devolução).
+- Filtro lateral por status continua funcionando porque usa `v.status` derivado.
+- Tipo `AgendamentoStatus` já inclui `"em_uso"`, então `StatusBadge` aceita sem mudanças adicionais.

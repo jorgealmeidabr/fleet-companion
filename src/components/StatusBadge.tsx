@@ -18,7 +18,7 @@ const map: Record<string, { label: string; className: string }> = {
   problema:     { label: "Problema",     className: "bg-destructive/15 text-destructive border-destructive/20" },
   // agendamento
   agendado:     { label: "Agendado",     className: "bg-info/15 text-info border-info/20" },
-  em_uso:       { label: "Em uso",       className: "bg-warning/15 text-warning border-warning/20" },
+  em_uso:       { label: "Em uso",       className: "bg-info/15 text-info border-info/20" },
   concluido:    { label: "Concluído",    className: "bg-success/15 text-success border-success/20" },
   cancelado:    { label: "Cancelado",    className: "bg-muted text-muted-foreground border-border" },
   // multa

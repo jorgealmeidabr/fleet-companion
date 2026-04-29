@@ -49,16 +49,40 @@ export default function Veiculos() {
   const [fStatus, setFStatus] = useState<string>("todos");
   const [fTipo, setFTipo] = useState<string>("todos");
   const [fComb, setFComb] = useState<string>("todos");
-  const [veiculosOcupados, setVeiculosOcupados] = useState<Set<string>>(new Set());
+  type AgInfo = { motoristaNome: string; dataSaida: string };
+  const [agendamentosAtivos, setAgendamentosAtivos] = useState<Map<string, AgInfo>>(new Map());
+  const [now, setNow] = useState(() => Date.now());
 
-  // Fonte de verdade: veículos com agendamento ativo/em_uso são "reservado"
+  // Tick a cada 60s para recalcular tempo decorrido e transição reservado→em_uso
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Fonte de verdade: agendamentos ativos com nome do motorista e horário de saída
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("veiculo_id,status")
+        .select("veiculo_id,data_saida,motorista_id")
         .eq("status", "ativo");
-      setVeiculosOcupados(new Set(((data ?? []) as Agendamento[]).map(a => a.veiculo_id)));
+      const ags = (data ?? []) as Array<{ veiculo_id: string; data_saida: string; motorista_id: string }>;
+      const motoristaIds = Array.from(new Set(ags.map(a => a.motorista_id).filter(Boolean)));
+      let nomes: Record<string, string> = {};
+      if (motoristaIds.length) {
+        const { data: ms } = await supabase
+          .from("motoristas")
+          .select("id,nome")
+          .in("id", motoristaIds);
+        nomes = Object.fromEntries(((ms ?? []) as Array<{ id: string; nome: string }>).map(m => [m.id, m.nome]));
+      }
+      const map = new Map<string, AgInfo>();
+      // Em caso de múltiplos ativos por veículo (não deveria), pega o de saída mais recente
+      ags.sort((a, b) => a.data_saida.localeCompare(b.data_saida));
+      for (const a of ags) {
+        map.set(a.veiculo_id, { motoristaNome: nomes[a.motorista_id] ?? "—", dataSaida: a.data_saida });
+      }
+      setAgendamentosAtivos(map);
     };
     load();
     const channel = supabase
@@ -68,11 +92,27 @@ export default function Veiculos() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Deriva status efetivo: se há agendamento ativo, força "reservado"
+  // Deriva status efetivo: agendamento ativo vira "reservado" (futuro) ou "em_uso" (já saiu)
   const rowsEfetivos = useMemo<Veiculo[]>(() => rows.map(v => {
     if (v.status === "manutencao" || v.status === "inativo") return v;
-    return veiculosOcupados.has(v.id) ? { ...v, status: "reservado" as Veiculo["status"] } : v;
-  }), [rows, veiculosOcupados]);
+    const info = agendamentosAtivos.get(v.id);
+    if (!info) return v;
+    const saida = new Date(info.dataSaida).getTime();
+    const status: Veiculo["status"] = saida <= now ? ("em_uso" as Veiculo["status"]) : "reservado";
+    return { ...v, status };
+  }), [rows, agendamentosAtivos, now]);
+
+  const formatHHmm = (iso: string) =>
+    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const formatDuracao = (desdeISO: string, nowMs: number) => {
+    const diff = Math.max(0, nowMs - new Date(desdeISO).getTime());
+    const totalMin = Math.floor(diff / 60_000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h${m.toString().padStart(2, "0")}m`;
+  };
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -89,7 +129,7 @@ export default function Veiculos() {
     <>
       <PageHeader
         title="Veículos"
-        subtitle="Cadastro completo da frota"
+        subtitle="Estado da frota em tempo real"
         actions={isAdmin && (
           <FormDialog<Veiculo>
             title="Novo veículo" fields={fields} onSubmit={insert}
