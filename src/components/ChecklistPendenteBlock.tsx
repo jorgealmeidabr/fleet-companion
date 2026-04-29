@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,30 @@ export function ChecklistPendenteBlock() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (loading || isAdmin || pendentes.length === 0) return null;
-
-  // Permite acessar a página de checklists e perfil sem bloqueio visual completo
   const allowedPaths = ["/checklists", "/meu-perfil", "/auth"];
   const isOnAllowed = allowedPaths.some(p => location.pathname.startsWith(p));
-  if (isOnAllowed) return null;
+  const shouldShow = !loading && !isAdmin && pendentes.length > 0 && !isOnAllowed;
+
+  useEffect(() => {
+    if (!shouldShow) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(
+        "Finalize o checklist para concluir o processo de devolução do Veículo."
+      );
+      u.lang = "pt-BR";
+      u.rate = 1;
+      window.speechSynthesis.speak(u);
+    } catch {
+      // ignore — alguns navegadores bloqueiam até interação do usuário
+    }
+    return () => {
+      try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+    };
+  }, [shouldShow]);
+
+  if (!shouldShow) return null;
 
   return (
     <Dialog open modal>
