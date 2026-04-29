@@ -178,12 +178,11 @@ export default function Agendamentos() {
     [rows]
   );
 
-  // Lista da aba "Ativos": admin vê tudo; usuário comum só vê os próprios.
+  // Lista da aba "Ativos": cada usuário (inclusive admin) vê APENAS os próprios.
   const ativosVisiveis = useMemo(() => {
-    if (isAdmin) return ativos;
     if (!perfil?.motorista_id) return [];
     return ativos.filter(a => a.motorista_id === perfil.motorista_id);
-  }, [ativos, isAdmin, perfil?.motorista_id]);
+  }, [ativos, perfil?.motorista_id]);
 
   const eventosNoDia = useMemo(() => {
     if (!selectedDay) return [];
@@ -519,7 +518,7 @@ export default function Agendamentos() {
             <CardContent className="p-0">
               {ativosVisiveis.length === 0 ? (
                 <p className="p-10 text-center text-muted-foreground">
-                  {isAdmin ? "Nenhum agendamento ativo." : "Você não possui agendamentos ativos."}
+                  Você não possui agendamentos ativos.
                 </p>
               ) : (
                 <ul className="divide-y divide-border">
@@ -527,7 +526,6 @@ export default function Agendamentos() {
                     const v = veiculoMap[a.veiculo_id];
                     const m = motoristaMap[a.motorista_id];
                     const ehDono = a.motorista_id === perfil?.motorista_id;
-                    const podeAgir = isAdmin || ehDono;
                     const agora = new Date();
                     const jaIniciou = new Date(a.data_saida) <= agora;
                     return (
@@ -546,18 +544,18 @@ export default function Agendamentos() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {jaIniciou && ehDono && (
+                          {ehDono && jaIniciou && (
                             <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
                               Iniciar uso
                             </Button>
                           )}
-                          {podeAgir && (
+                          {ehDono && jaIniciou && (
                             <Button size="sm" variant="brand"
                               onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
                               <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
                             </Button>
                           )}
-                          {podeAgir && (
+                          {ehDono && (
                             <Button size="sm" variant="ghost" onClick={() => cancelar(a)}>Cancelar</Button>
                           )}
                         </div>
