@@ -318,7 +318,10 @@ export default function Agendamentos() {
   const confirmarDevolucao = async () => {
     if (!returning) return;
     if (retForm.km_retorno == null || retForm.km_retorno < (returning.km_saida ?? 0)) {
-      toast({ title: "Km de retorno inválido", variant: "destructive" });
+      toast({
+        title: "Km de retorno inválido. O valor não pode ser menor que o Km de saída.",
+        variant: "destructive",
+      });
       return;
     }
     if (!retForm.foto_url) {
@@ -751,16 +754,34 @@ export default function Agendamentos() {
             <DialogTitle>Registrar devolução</DialogTitle>
             <DialogDescription className="sr-only">Confirme os dados de devolução.</DialogDescription>
           </DialogHeader>
-          {returning && (
+          {returning && (() => {
+            const kmSaida = returning.km_saida ?? 0;
+            const kmRetorno = retForm.km_retorno;
+            const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno < kmSaida;
+            return (
+            <>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Veículo <span className="font-mono font-medium text-foreground">{veiculoMap[returning.veiculo_id]?.placa}</span> •
-                Km saída: {fmtNumber(returning.km_saida ?? 0)}
+                Km saída: {fmtNumber(kmSaida)}
               </p>
               <div className="space-y-1.5">
                 <Label>Km de retorno (hodômetro) *</Label>
-                <Input type="number" placeholder="Informe o KM atual" value={retForm.km_retorno ?? ""} onChange={(e) => setRetForm(s => ({ ...s, km_retorno: Number(e.target.value) }))} />
-                <p className="text-xs text-muted-foreground">Esse KM virará o KM de saída do próximo agendamento.</p>
+                <Input
+                  type="number"
+                  placeholder="Informe o KM atual"
+                  value={retForm.km_retorno ?? ""}
+                  onChange={(e) => setRetForm(s => ({ ...s, km_retorno: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                  aria-invalid={kmInvalido}
+                  className={kmInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
+                />
+                {kmInvalido ? (
+                  <p className="text-xs text-destructive">
+                    Km de retorno inválido. O valor não pode ser menor que o Km de saída.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Esse KM virará o KM de saída do próximo agendamento.</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-2"><Camera className="h-4 w-4" />Foto do hodômetro *</Label>
@@ -789,13 +810,19 @@ export default function Agendamentos() {
                 ⚠️ Após a devolução, o checklist pós-uso é obrigatório antes de novas ações.
               </div>
             </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
-            <Button variant="brand" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
-              {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
+              <Button
+                variant="brand"
+                disabled={savingDevolucao || uploadingFoto || kmInvalido || kmRetorno == null}
+                onClick={confirmarDevolucao}
+              >
+                {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
+              </Button>
+            </DialogFooter>
+            </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>
