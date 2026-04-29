@@ -18,6 +18,9 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { cn } from "@/lib/utils";
+import { useChecklistPendente } from "@/hooks/useChecklistPendente";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 // Itens visuais (apenas UI). Apenas os que correspondem a colunas no banco são persistidos diretamente.
 const ITEMS: { key: keyof Pick<Checklist, "pneus_ok" | "luzes_ok">; label: string; hint: string }[] = [
@@ -53,6 +56,7 @@ export default function Checklists() {
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { pendentes, refresh: refreshPendentes } = useChecklistPendente();
 
   useEffect(() => {
     supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[]));
@@ -132,6 +136,7 @@ export default function Checklists() {
       setForm(initial);
       setOpen(false);
       await reload();
+      await refreshPendentes();
     } finally { setSaving(false); }
   };
 
@@ -139,6 +144,18 @@ export default function Checklists() {
 
   return (
     <>
+      {pendentes.length > 0 && (
+        <Alert variant="destructive" className="mb-4 border-warning bg-warning/10 text-warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Devolução pendente</AlertTitle>
+          <AlertDescription>
+            Finalize o checklist para concluir o processo de devolução do Veiculo.
+            {pendentes.length === 1
+              ? ` Veículo: ${pendentes[0].veiculo_placa} — ${pendentes[0].veiculo_modelo}`
+              : ` (${pendentes.length} veículos pendentes)`}
+          </AlertDescription>
+        </Alert>
+      )}
       <PageHeader
         title="Checklists"
         subtitle="Inspeções pré-uso dos veículos"
