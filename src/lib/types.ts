@@ -72,7 +72,7 @@ export type Database = {
       agendamentos: { Row: Agendamento; Insert: Partial<Agendamento>; Update: Partial<Agendamento> };
       multas: { Row: Multa; Insert: Partial<Multa>; Update: Partial<Multa> };
       requests: { Row: Request; Insert: Partial<Request>; Update: Partial<Request> };
-      profiles: { Row: { id: string; nome: string | null; email: string | null; created_at: string }; Insert: any; Update: any };
+      profiles: { Row: { id: string; nome: string | null; email: string | null; cargo_pretendido: string | null; status: "pendente" | "ativo" | "rejeitado"; created_at: string }; Insert: any; Update: any };
       user_roles: { Row: { id: string; user_id: string; role: AppRole }; Insert: any; Update: any };
       usuarios_perfis: { Row: UsuarioPerfil; Insert: Partial<UsuarioPerfil>; Update: Partial<UsuarioPerfil> };
     };
@@ -80,6 +80,10 @@ export type Database = {
       has_role: { Args: { _user_id: string; _role: AppRole }; Returns: boolean };
       has_perm: { Args: { _user_id: string; _modulo: string }; Returns: boolean };
       is_admin_perfil: { Args: { _user_id: string }; Returns: boolean };
+      is_perfil_ativo: { Args: { _uid: string }; Returns: boolean };
+      create_pending_profile: { Args: { _user_id: string; _nome: string; _email: string }; Returns: void };
+      approve_user: { Args: { _user_id: string; _tipo?: TipoConta; _permissoes?: any; _cargo?: string | null }; Returns: void };
+      reject_user: { Args: { _user_id: string }; Returns: void };
     };
   };
 };
