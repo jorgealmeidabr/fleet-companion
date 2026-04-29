@@ -526,8 +526,6 @@ export default function Agendamentos() {
                     const v = veiculoMap[a.veiculo_id];
                     const m = motoristaMap[a.motorista_id];
                     const ehDono = a.motorista_id === perfil?.motorista_id;
-                    const agora = new Date();
-                    const jaIniciou = new Date(a.data_saida) <= agora;
                     return (
                       <li key={a.id} className="flex flex-wrap items-center gap-3 p-4">
                         <span className="h-3 w-3 rounded-full" style={{ background: colorByVeiculo[a.veiculo_id] }} />
@@ -544,12 +542,12 @@ export default function Agendamentos() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {ehDono && jaIniciou && (
+                          {ehDono && (
                             <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
                               Iniciar uso
                             </Button>
                           )}
-                          {ehDono && jaIniciou && (
+                          {ehDono && (
                             <Button size="sm" variant="brand"
                               onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
                               <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
