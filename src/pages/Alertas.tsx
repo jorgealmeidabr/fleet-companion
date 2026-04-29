@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAlerts, type AlertLevel } from "@/hooks/useAlerts";
-import { AlertTriangle, AlertCircle, Info, ShieldCheck, ArrowRight } from "lucide-react";
+import { useDismissedAlerts } from "@/hooks/useDismissedAlerts";
+import { AlertTriangle, AlertCircle, Info, ShieldCheck, ArrowRight, Check, Trash2 } from "lucide-react";
 import { ListSkeleton } from "@/components/Skeletons";
+import { useToast } from "@/hooks/use-toast";
 
 const STYLE: Record<AlertLevel, { icon: any; bar: string; badge: string; label: string }> = {
   critico: { icon: AlertCircle,    bar: "border-l-destructive", badge: "bg-destructive/15 text-destructive border-destructive/20", label: "Crítico" },
@@ -16,6 +18,19 @@ const STYLE: Record<AlertLevel, { icon: any; bar: string; badge: string; label: 
 
 export default function Alertas() {
   const { alerts, counts, loading } = useAlerts();
+  const { dismiss, dismissMany } = useDismissedAlerts();
+  const { toast } = useToast();
+
+  const onDismiss = (id: string, titulo: string) => {
+    dismiss(id);
+    toast({ title: "Alerta resolvido", description: titulo });
+  };
+
+  const onDismissAll = () => {
+    if (alerts.length === 0) return;
+    dismissMany(alerts.map(a => a.id));
+    toast({ title: "Alertas limpos", description: `${alerts.length} alertas marcados como resolvidos.` });
+  };
 
   return (
     <>
@@ -23,10 +38,15 @@ export default function Alertas() {
         title="Alertas"
         subtitle="Eventos que requerem ação ordenados por prioridade"
         actions={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className={STYLE.critico.badge}>{counts.critico} críticos</Badge>
             <Badge variant="outline" className={STYLE.atencao.badge}>{counts.atencao} atenção</Badge>
             <Badge variant="outline" className={STYLE.info.badge}>{counts.info} info</Badge>
+            {alerts.length > 0 && (
+              <Button size="sm" variant="outline" onClick={onDismissAll}>
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> Limpar todos
+              </Button>
+            )}
           </div>
         }
       />
@@ -54,11 +74,16 @@ export default function Alertas() {
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">{a.descricao}</p>
                   </div>
-                  {a.link && (
-                    <Button asChild size="sm" variant="outline">
-                      <Link to={a.link}>Abrir <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
+                  <div className="flex items-center gap-2">
+                    {a.link && (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={a.link}>Abrir <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => onDismiss(a.id, a.titulo)}>
+                      <Check className="mr-1 h-3.5 w-3.5" /> Resolver
                     </Button>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
             );

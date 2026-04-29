@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
+import { useChecklistPendente } from "@/hooks/useChecklistPendente";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { uploadFiles } from "@/lib/storage";
 import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
+import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -53,10 +55,57 @@ export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
   const { isAdmin, perfil = null } = useAuth();
   const { toast } = useToast();
+  const { pendentes: checklistPendentes } = useChecklistPendente();
+  const temPendencia = !isAdmin && checklistPendentes.length > 0;
   const navigate = useNavigate();
 
-  // Toca 3 bipes curtos via WebAudio (sem assets externos)
+  // Toca 3 bipes curtos via WebAudio + mensagem de voz (TTS)
   const playReturnBeeps = () => {
+    // 1) Dispara a fala IMEDIATAMENTE no gesto do usuário (necessário em
+    //    navegadores como Chrome/Safari que bloqueiam fala fora de gesto).
+    //    A fala é "engatilhada" agora e segura por ~900ms via pause(),
+    //    para tocar logo após os bipes.
+    let utter: SpeechSynthesisUtterance | null = null;
+    try {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        const synth = window.speechSynthesis;
+        synth.cancel();
+        utter = new SpeechSynthesisUtterance(
+          "Finalize o checklist para concluir o processo de devolução do veículo."
+        );
+        utter.lang = "pt-BR";
+        utter.rate = 1;
+        utter.pitch = 1;
+        utter.volume = 1;
+        const pickVoice = () => {
+          const voices = synth.getVoices();
+          const ptVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("pt"));
+          if (ptVoice && utter) utter.voice = ptVoice;
+        };
+        pickVoice();
+        if (!synth.getVoices().length) {
+          // Algumas plataformas carregam vozes de forma assíncrona
+          synth.onvoiceschanged = () => pickVoice();
+        }
+        // Inicia (dentro do gesto) e pausa para sincronizar com o fim dos bipes
+        synth.speak(utter);
+        synth.pause();
+        setTimeout(() => {
+          try { synth.resume(); } catch { /* ignora */ }
+        }, 950);
+        // Fallback: se pause/resume não for suportado, força um novo speak
+        setTimeout(() => {
+          try {
+            if (!synth.speaking && utter) {
+              synth.cancel();
+              synth.speak(utter);
+            }
+          } catch { /* ignora */ }
+        }, 1100);
+      }
+    } catch { /* ignora */ }
+
+    // 2) Bipes
     try {
       const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
       if (!Ctx) return;
@@ -178,6 +227,15 @@ export default function Agendamentos() {
   // ---- Confirmar novo agendamento
   const confirmarAgendamento = async () => {
     if (!pickedVeiculo) return;
+    if (temPendencia) {
+      toast({
+        title: "Checklist pós-uso pendente",
+        description: "Finalize o checklist da última devolução antes de reservar outro veículo.",
+        variant: "destructive",
+      });
+      navigate("/checklists");
+      return;
+    }
     if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
@@ -288,8 +346,9 @@ export default function Agendamentos() {
     await update(a.id, { status: "cancelado" } as Partial<Agendamento>);
   };
 
-  // Veículo é selecionável se NÃO está em manutencao/inativo (regra mantida).
-  const isVeiculoSelecionavel = (v: Veiculo) => v.status !== "manutencao" && v.status !== "inativo";
+  // Veículo é selecionável se NÃO está em manutencao/inativo E o usuário não tem checklist pendente.
+  const isVeiculoSelecionavel = (v: Veiculo) =>
+    !temPendencia && v.status !== "manutencao" && v.status !== "inativo";
 
   return (
     <>
@@ -538,6 +597,7 @@ export default function Agendamentos() {
             <DialogDescription className="sr-only">Reservar o veículo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {pickedVeiculo && <VeiculoChecklistStatus veiculoId={pickedVeiculo.id} />}
             <div className="space-y-1.5">
               <Label>Motorista *</Label>
               <MotoristaAutocomplete

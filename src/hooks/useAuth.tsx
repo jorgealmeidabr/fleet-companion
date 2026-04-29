@@ -4,6 +4,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { AppRole, Permissoes, TipoConta, UsuarioPerfil } from "@/lib/types";
 import { PERMISSOES_TUDO } from "@/lib/types";
 
+export type ProfileStatus = "pendente" | "ativo" | "rejeitado";
+
 interface AuthCtx {
   user: User | null;
   session: Session | null;
@@ -15,6 +17,7 @@ interface AuthCtx {
   isAdmin: boolean;
   isMotorista: boolean;
   mustChangePassword: boolean;
+  profileStatus: ProfileStatus | null;
   refreshPerfil: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
@@ -28,9 +31,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [perfil, setPerfil] = useState<UsuarioPerfil | null>(null);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadPerfil = useCallback(async (uid: string) => {
+    // 0. status do profile (gate de aprovação)
+    const { data: prof } = await (supabase as any)
+      .from("profiles").select("status").eq("id", uid).maybeSingle();
+    const status = (prof?.status ?? "ativo") as ProfileStatus;
+    setProfileStatus(status);
+
     // 1. usuarios_perfis (novo sistema de permissões)
     const { data: perfRaw } = await (supabase as any)
       .from("usuarios_perfis").select("*").eq("user_id", uid).maybeSingle();
@@ -48,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
     const roles = ((data ?? []) as Array<{ role: string }>).map(r => r.role);
     if (roles.includes("admin")) { setRole("admin"); setPerfil(null); }
-    else if (roles.includes("motorista") || roles.includes("usuario")) { setRole("motorista"); setPerfil(null); }
+    else if (roles.includes("usuario") || roles.includes("motorista")) { setRole("motorista"); setPerfil(null); }
     else { setRole(null); setPerfil(null); }
   }, []);
 
@@ -61,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (s?.user) {
         setTimeout(() => { loadPerfil(s.user.id); }, 0);
       } else {
-        setRole(null); setPerfil(null);
+        setRole(null); setPerfil(null); setProfileStatus(null);
       }
     });
 
@@ -105,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       isMotorista: role === "motorista",
       mustChangePassword: !!perfil?.must_change_password,
+      profileStatus,
       refreshPerfil, signIn, signUp, signOut,
     }}>
       {children}
