@@ -23,6 +23,16 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { janelaOcupada } from "@/lib/agendamento";
 
 
+function LiveStatusPill() {
+  return (
+    <div className="status-pill" aria-hidden="true">
+      <span className="status-pill__dot" />
+      <span className="status-pill__label">Status da Frota em Tempo Real</span>
+      <span className="status-pill__sweep" />
+    </div>
+  );
+}
+
 const fields: FieldDef[] = [
   { name: "placa", label: "Placa", required: true,
     placeholder: "AAA-0000 ou AAA0A00",
