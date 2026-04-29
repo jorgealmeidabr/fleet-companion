@@ -769,6 +769,9 @@ export default function Agendamentos() {
                 <Label>Observações</Label>
                 <Textarea value={retForm.observacoes ?? ""} onChange={(e) => setRetForm(s => ({ ...s, observacoes: e.target.value }))} />
               </div>
+              <div className="rounded-md border border-primary/40 bg-primary/10 p-2 text-xs">
+                ⏱️ O horário de retorno será registrado automaticamente <strong>agora</strong> ({fmtDateTime(new Date().toISOString())}). Confirme apenas após chegar com o veículo.
+              </div>
               <div className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
                 ⚠️ Após a devolução, o checklist pós-uso é obrigatório antes de novas ações.
               </div>
