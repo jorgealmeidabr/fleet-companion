@@ -24,6 +24,7 @@ import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { uploadFiles } from "@/lib/storage";
 import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
 import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
+import { janelaOcupada } from "@/lib/agendamento";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
