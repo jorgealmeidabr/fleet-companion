@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { FormDialog, FieldDef } from "@/components/FormDialog";
@@ -113,6 +113,46 @@ export default function Veiculos() {
     if (m === 0) return `${h}h`;
     return `${h}h${m.toString().padStart(2, "0")}m`;
   };
+
+  // Notificações por voz (admin) — toca quando o status efetivo muda
+  const prevStatusRef = useRef<Map<string, string>>(new Map());
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!isAdmin) return;
+    const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+    const speak = (texto: string) => {
+      if (!canSpeak) return;
+      const u = new SpeechSynthesisUtterance(texto);
+      u.lang = "pt-BR";
+      u.rate = 1;
+      window.speechSynthesis.speak(u);
+    };
+    const relevantes = new Set(["disponivel", "reservado", "em_uso"]);
+    const prev = prevStatusRef.current;
+    if (!initializedRef.current) {
+      for (const v of rowsEfetivos) prev.set(v.id, v.status as string);
+      initializedRef.current = true;
+      return;
+    }
+    for (const v of rowsEfetivos) {
+      const status = v.status as string;
+      const anterior = prev.get(v.id);
+      if (anterior === status) continue;
+      prev.set(v.id, status);
+      if (!relevantes.has(status)) continue;
+      const info = agendamentosAtivos.get(v.id);
+      const motorista = info?.motoristaNome ?? "";
+      let frase = "";
+      if (status === "reservado") {
+        frase = `O veículo ${v.modelo}, placa ${v.placa}, foi reservado pelo condutor ${motorista}.`;
+      } else if (status === "em_uso") {
+        frase = `O veículo ${v.modelo}, placa ${v.placa}, está em uso pelo condutor ${motorista}.`;
+      } else if (status === "disponivel") {
+        frase = `O veículo ${v.modelo}, placa ${v.placa}, está disponível.`;
+      }
+      if (frase) speak(frase);
+    }
+  }, [rowsEfetivos, agendamentosAtivos, isAdmin]);
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
