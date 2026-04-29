@@ -15,6 +15,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useRequestBadge } from "@/hooks/useRequestBadge";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { TopbarClock } from "@/components/TopbarClock";
 import { ChecklistPendenteBlock } from "@/components/ChecklistPendenteBlock";
 import { IdleScreen } from "@/components/IdleScreen";
 import { useIdle } from "@/hooks/useIdle";
@@ -165,6 +166,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border bg-background/80 px-3 py-1 backdrop-blur">
             <SidebarTrigger />
+            <div aria-hidden="true" className="mx-2" style={{ width: "1px", height: "28px", backgroundColor: "#2a2a2a" }} />
+            <TopbarClock />
             <div className="ml-auto flex items-center gap-2">
               <GlobalSearch />
               {tipoConta && (
