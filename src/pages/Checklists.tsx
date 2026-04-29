@@ -124,7 +124,7 @@ export default function Checklists() {
       const obsFinal = `[Nível combustível: ${form.nivel_combustivel}]${form.observacoes ? " " + form.observacoes : ""}`;
       await insert({
         veiculo_id: form.veiculo_id,
-        motorista_id: form.motorista_id || null,
+        motorista_id: perfil?.motorista_id ?? form.motorista_id ?? null,
         data: form.data,
         pneus_ok: form.pneus_ok,
         luzes_ok: form.luzes_ok,
