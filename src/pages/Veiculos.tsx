@@ -25,9 +25,9 @@ import { janelaOcupada } from "@/lib/agendamento";
 
 function LiveStatusPill() {
   return (
-    <div className="status-pill" aria-hidden="true">
-      <span className="status-pill__dot" />
-      <span className="status-pill__label">Status da Frota em Tempo Real</span>
+    <div className="status-pill border-amber-300" aria-hidden="true">
+      <span className="status-pill__dot border-yellow-500 bg-yellow-400" />
+      <span className="status-pill__label text-amber-400">Status da Frota em Tempo Real</span>
       <span className="status-pill__sweep" />
     </div>
   );
