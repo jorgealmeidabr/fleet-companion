@@ -172,11 +172,18 @@ export default function Agendamentos() {
   }, [veiculos]);
 
   // Toda reserva que ocupa horário (exclui apenas canceladas e concluídas).
-  // Inclui status legados como "agendado" e "em_uso" para que apareçam na timeline e bloqueiem conflitos.
+  // Usado no calendário/timeline para evitar conflitos — precisa ver TODOS.
   const ativos = useMemo(
     () => rows.filter(r => r.status !== "cancelado" && r.status !== "concluido"),
     [rows]
   );
+
+  // Lista da aba "Ativos": admin vê tudo; usuário comum só vê os próprios.
+  const ativosVisiveis = useMemo(() => {
+    if (isAdmin) return ativos;
+    if (!perfil?.motorista_id) return [];
+    return ativos.filter(a => a.motorista_id === perfil.motorista_id);
+  }, [ativos, isAdmin, perfil?.motorista_id]);
 
   const eventosNoDia = useMemo(() => {
     if (!selectedDay) return [];
