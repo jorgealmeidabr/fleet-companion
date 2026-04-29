@@ -3,7 +3,7 @@
 -- Rode na ordem: 01_schema.sql -> 02_rls.sql -> 03_storage.sql -> 04_seed.sql
 -- ============================================================
 
--- Extensões úteis
+-- Extensões úteis--
 create extension if not exists "pgcrypto";
 
 -- ---------- ENUMS ----------
