@@ -153,7 +153,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { counts } = useAlerts();
   const alertCount = isAdmin ? counts.critico + counts.atencao : 0;
   const requestCount = useRequestBadge();
-  const { idle, wake } = useIdle(50000, !!user);
+  const location = useLocation();
+  // Desativa a tela de descanso enquanto o usuário estiver na página de Veículos
+  const idleEnabled = !!user && location.pathname !== "/veiculos";
+  const { idle, wake } = useIdle(50000, idleEnabled);
 
   return (
     <SidebarProvider>
