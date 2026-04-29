@@ -128,12 +128,19 @@ export default function Veiculos() {
         if (a.status === "concluido") {
           status = "disponivel";
           hora = a.data_retorno_real ?? a.data_saida;
-        } else if (new Date(a.data_saida).getTime() <= agora) {
-          status = "em_uso";
-          hora = a.data_saida;
         } else {
-          status = "reservado";
-          hora = a.data_saida;
+          const { inicio, fim } = janelaOcupada(a);
+          if (agora < inicio.getTime()) {
+            status = "reservado";
+            hora = a.data_saida;
+          } else if (agora <= fim.getTime()) {
+            status = "em_uso";
+            hora = a.data_saida;
+          } else {
+            // Ativo, sem retorno real e janela mínima já expirou — tratamos como disponível no feed
+            status = "disponivel";
+            hora = a.data_retorno_real ?? a.data_saida;
+          }
         }
         return {
           key: `${a.id}-${status}`,
