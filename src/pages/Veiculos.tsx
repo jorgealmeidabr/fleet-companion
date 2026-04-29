@@ -436,8 +436,7 @@ export default function Veiculos() {
         ) : (
           <Button
             size="icon"
-            variant="brand"
-            className="relative h-12 w-12 rounded-full shadow-elevated"
+            className="relative h-12 w-12 rounded-full shadow-elevated bg-amber-500 border-8 text-primary-foreground"
             onClick={() => setFeedAberto(true)}
             aria-label="Abrir feed de eventos"
           >
