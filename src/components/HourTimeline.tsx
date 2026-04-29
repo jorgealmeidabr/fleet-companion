@@ -25,8 +25,7 @@ export function HourTimeline({ agendamentos, day, startHour = 6, endHour = 22, h
     return agendamentos
       .filter(a => a.status !== "cancelado" && a.status !== "concluido")
       .map(a => {
-        const s = new Date(a.data_saida);
-        const e = new Date(a.data_retorno_prevista);
+        const { inicio: s, fim: e } = janelaOcupada(a);
         if (e <= dayStart || s >= dayEnd) return null;
         const sClamped = s < dayStart ? dayStart : s;
         const eClamped = e > dayEnd ? dayEnd : e;
