@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useChecklistPendente } from "@/hooks/useChecklistPendente";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 // Itens visuais (apenas UI). Apenas os que correspondem a colunas no banco são persistidos diretamente.
 const ITEMS: { key: keyof Pick<Checklist, "pneus_ok" | "luzes_ok">; label: string; hint: string }[] = [
@@ -57,6 +58,7 @@ export default function Checklists() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const { pendentes, refresh: refreshPendentes } = useChecklistPendente();
+  const { perfil } = useAuth();
 
   useEffect(() => {
     supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[]));
@@ -69,7 +71,7 @@ export default function Checklists() {
   // ----- form state -----
   const initial = {
     veiculo_id: "",
-    motorista_id: "",
+    motorista_id: perfil?.motorista_id ?? "",
     data: new Date().toISOString().slice(0, 10),
     pneus_ok: true,
     luzes_ok: true,
