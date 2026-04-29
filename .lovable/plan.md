@@ -1,40 +1,68 @@
-# Correção do cálculo de bloqueio (apenas front-end)
+# Indicador "Voz Ativa" na página de Veículos
 
-## Helper novo
+Adicionar um componente flutuante fixo no canto inferior direito da página **Veículos** que aparece somente enquanto o navegador está falando (Web Speech API), exibindo barras animadas + o texto que está sendo falado.
 
-**`src/lib/agendamento.ts`** — função única `janelaOcupada`:
+## Comportamento
 
-```ts
-export function janelaOcupada(a: {
-  data_saida: string;
-  data_retorno_real: string | null;
-  status: string;
-}): { inicio: Date; fim: Date } {
-  const inicio = new Date(a.data_saida);
-  const fim = a.data_retorno_real
-    ? new Date(a.data_retorno_real)
-    : new Date(inicio.getTime() + 30 * 60_000); // 30 min mínimos quando ativo sem retorno
-  return { inicio, fim };
-}
-```
+- Posição: `position: fixed; bottom: 24px; right: 24px; z-index: 50`.
+- Visibilidade controlada por polling de `window.speechSynthesis`:
+  - `setInterval` a cada **300ms** verifica `speechSynthesis.speaking`.
+  - Quando passa para `true` → monta com animação `fadeIn`.
+  - Quando passa para `false` → animação `fadeOut` (~250ms) e desmonta.
+- Texto falado: capturado via `SpeechSynthesisUtterance.text` do utterance atual.
+  - Como a Web Speech API não expõe diretamente o utterance ativo, faremos um *light wrap* somente leitura: um `useEffect` faz monkey-patch de `speechSynthesis.speak` para guardar o último `utterance.text` em uma ref/módulo (`window.__lastSpokenText`). Isso não altera nenhuma lógica existente — apenas observa.
+  - O polling lê esse valor enquanto `speaking === true`.
 
-## Substituições
+## Visual
 
-### `src/pages/Agendamentos.tsx`
-- **`eventosNoDia`** (~linha 187): trocar `inRange(selectedDay, a.data_saida, a.data_retorno_prevista)` por uso de `janelaOcupada(a).fim`.
-- **`diasComEvento`** (~linha 192): iterar de `data_saida` até `janelaOcupada(a).fim`.
-- **`conflito`** (~linha 208): comparar `inicio < janelaOcupada(a).fim && fim > janelaOcupada(a).inicio` (em vez de `data_retorno_prevista`/`data_saida` crus).
+Container:
+- Fundo `#1a1a1a`, borda `1px solid #EF9F27`, `border-radius: 12px`, `padding: 10px 16px`.
+- Sombra suave para destacar do fundo.
+- Layout flex horizontal: [barras] · [bloco de texto].
 
-### `src/components/HourTimeline.tsx`
-- **bloco `blocks`** (~linha 22): substituir `new Date(a.data_retorno_prevista)` por `janelaOcupada(a).fim`.
-- **`suggestFreeSlots`** (~linha 103): mesma troca dentro do `.map`.
-- O parâmetro continua sendo `Agendamento[]` (já contém `data_retorno_real` e `status`), sem mudar a assinatura pública.
+Equalizer (esquerda):
+- 7 barras verticais, `width: 3px`, `border-radius: 2px`, `background: #EF9F27`.
+- Alturas base variando (ex.: 10, 16, 22, 18, 14, 20, 12 px).
+- Animação CSS `voice-bounce` 0.8s `infinite ease-in-out` com `scaleY` entre `1` e `0.3`.
+- `animation-delay` distinto por barra (ex.: 0s, 0.1s, 0.2s, 0.05s, 0.15s, 0.25s, 0.1s) para efeito orgânico.
 
-### `src/pages/Veiculos.tsx`
-- Na derivação de status "Em uso": usar `janelaOcupada` para decidir se o agendamento ativo cobre o instante atual (em vez de assumir o dia inteiro / `data_retorno_prevista`).
+Bloco direito:
+- Linha 1: ponto circular **7px** âmbar piscando (`@keyframes voice-blink`, opacity 1↔0.3, 1s infinite) + texto **"Frota"** em `font-size: 11px`, cor `#EF9F27`.
+- Linha 2: texto sendo falado em `font-size: 12px`, cor `#e0e0e0`, com `max-width` ~280px, `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis`.
 
-## Não muda
+## Detalhes técnicos
 
-- `data_retorno_prevista` continua no schema, no formulário e nas exibições — apenas deixa de ser referência para conflito.
-- Nenhuma migration, RPC, trigger ou function do Supabase é tocada. A trigger server-side `agendamentos_block_overlap` permanece como está (segunda camada de validação independente).
-- Demais telas (Histórico, Checklist Pendente) não são afetadas.
+**Arquivos a alterar:**
+
+1. `src/index.css` — adicionar:
+   - `@keyframes voice-bounce` (`transform: scaleY(1)` ↔ `scaleY(0.3)`).
+   - `@keyframes voice-blink` (opacity 1 ↔ 0.3).
+   - `@keyframes voice-fade-in` / `voice-fade-out` (opacity + translateY 8px).
+   - Classes utilitárias `.voice-indicator`, `.voice-indicator__bar`, `.voice-indicator__dot`, `.voice-indicator__label`, `.voice-indicator__text` com os estilos descritos.
+
+2. `src/components/VoiceActiveIndicator.tsx` (novo):
+   - Componente cliente isolado.
+   - `useState<{ visible: boolean; text: string }>`.
+   - `useEffect` que:
+     - Faz monkey-patch único de `speechSynthesis.speak` para registrar `utterance.text` em `(window as any).__lastSpokenText`.
+     - Inicia `setInterval(300ms)`:
+       - Se `speechSynthesis.speaking` e não visível → set `visible=true`, `text = window.__lastSpokenText ?? ""`.
+       - Se não está falando e estava visível → dispara estado `closing` por 250ms (anim fadeOut), depois `visible=false`.
+     - Cleanup: `clearInterval` (não desfaz patch, é idempotente e seguro).
+   - Renderiza `null` quando não visível e não fechando.
+   - Usa as classes do CSS para barras/ponto/texto. Renderiza 7 `<span class="voice-indicator__bar" style={{ animationDelay, height }} />`.
+
+3. `src/pages/Veiculos.tsx`:
+   - Importar `VoiceActiveIndicator`.
+   - Renderizar `<VoiceActiveIndicator />` ao final do JSX retornado pela página (irmão do conteúdo principal). Nenhuma outra alteração.
+
+## Acessibilidade
+
+- Container com `role="status"` e `aria-live="polite"` para que leitores de tela anunciem o texto falado uma vez (texto curto, sem ruído).
+- Ponto/barras com `aria-hidden="true"`.
+
+## Fora de escopo
+
+- Não alterar nenhuma chamada existente a `speechSynthesis.speak` na aplicação.
+- Não tocar em outros componentes da topbar, do feed ou da tabela de veículos.
+- Sem bibliotecas externas; apenas CSS + React.
