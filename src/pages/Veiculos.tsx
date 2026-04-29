@@ -281,6 +281,24 @@ export default function Veiculos() {
         </div>
       </div>
 
+      {/* Ticker de eventos (marquee) */}
+      {eventos.length > 0 && (
+        <div className="mb-4 overflow-hidden rounded-md border bg-muted/40">
+          <div className="flex w-max animate-marquee whitespace-nowrap py-2 hover:[animation-play-state:paused]">
+            {[...eventos, ...eventos].map((e, i) => (
+              <span key={`${e.key}-${i}`} className="mx-6 inline-flex items-center gap-2 text-xs">
+                <span className={`inline-block h-2 w-2 rounded-full ${statusDotClass(e.status)}`} />
+                <span className="font-mono font-semibold tracking-wider">{e.placa}</span>
+                <span className="text-muted-foreground">·</span>
+                <span>{statusLabel(e.status)}{e.status !== "disponivel" ? ` por ${e.motorista}` : ""}</span>
+                <span className="text-muted-foreground">·</span>
+                <span className="tabular-nums text-muted-foreground">{horaHHmm(e.hora)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <CardGridSkeleton count={8} />
       ) : filtered.length === 0 ? (
