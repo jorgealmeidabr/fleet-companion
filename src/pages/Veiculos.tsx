@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { fmtNumber } from "@/lib/format";
 import type { Veiculo } from "@/lib/types";
-import { Plus, Search, MoreVertical, Car, Pencil, Eye, PowerOff } from "lucide-react";
+import { Plus, Search, MoreVertical, Car, Pencil, Eye, PowerOff, Bell, ChevronDown, X } from "lucide-react";
 import { validarPlaca, formatarPlaca, validarAno } from "@/lib/validators";
 import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
