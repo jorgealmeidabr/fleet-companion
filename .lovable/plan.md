@@ -1,24 +1,29 @@
 ## Objetivo
-Na aba "Tabela de uso" do Histórico de veículos, exibir data + hora (dd/mm/aaaa HH:mm) nas colunas Saída e Retorno, em vez de apenas a data.
+Remover o campo "Retorno previsto" do formulário de novo agendamento. O horário real de retorno já é capturado automaticamente na devolução.
 
-## Mudança
-Arquivo: `src/pages/Historico.tsx`
+## Contexto técnico
+A coluna `agendamentos.data_retorno_prevista` é `NOT NULL` no banco e é usada para:
+- Detecção de conflito de horário (cliente e RPC `check_agendamento_conflito`).
+- Renderização do intervalo no calendário, timeline e popup.
+- Sugestões de horários alternativos.
 
-Nas células das colunas "Saída" e "Retorno" da tabela de uso, trocar `fmtDate(r.saida)` / `fmtDate(r.retorno)` por uma formatação que inclua hora e minuto no padrão `dd/mm/aaaa HH:mm`.
+Por isso, não dá para simplesmente remover o valor — precisamos preencher automaticamente.
 
-Como `fmtDateTime` em `src/lib/format.ts` usa `toLocaleString("pt-BR")` (que retorna `dd/mm/aaaa HH:mm:ss`, com segundos), para garantir o formato pedido `HH:mm` sem segundos, usar opções explícitas:
+## Mudanças em `src/pages/Agendamentos.tsx`
 
-```ts
-new Date(r.saida).toLocaleString("pt-BR", {
-  day: "2-digit", month: "2-digit", year: "numeric",
-  hour: "2-digit", minute: "2-digit"
-})
-```
+1. **Remover o input "Retorno previsto"** do `DialogContent` de novo agendamento (linhas ~645-654). A grade `sm:grid-cols-2` vira um único campo "Saída".
 
-Aplicar o mesmo a `r.retorno`, mantendo fallback "—" quando o valor for nulo/ inválido.
+2. **Auto-preencher `data_retorno_prevista`** sempre que o usuário alterar "Saída":
+   - Calcular `data_saida + 24h` e gravar no estado `form.data_retorno_prevista` no formato `YYYY-MM-DDTHH:mm`.
+   - Assim, toda a lógica existente de conflito, timeline e RPC continua funcionando sem alteração.
 
-Opcional (para reuso): adicionar um helper `fmtDateTimeShort` em `src/lib/format.ts` com essas opções e usar no Histórico. Recomendo essa opção para manter consistência caso outras telas precisem do mesmo formato no futuro.
+3. **Texto auxiliar** abaixo do campo Saída:
+   *"O horário de retorno será registrado automaticamente na devolução do veículo."*
 
-## Escopo
-- Apenas a tabela de uso da página Histórico. A timeline e outros lugares permanecem inalterados.
-- Sem alterações de schema, dados ou queries.
+4. **Sugestões de horário** (quando há conflito): o botão de sugestão hoje seta `data_saida` e `data_retorno_prevista` com o intervalo sugerido — manter esse comportamento (apenas usado internamente).
+
+5. Nenhuma alteração em validação de submit (`!form.data_retorno_prevista`) é necessária, pois o valor sempre estará preenchido automaticamente quando `data_saida` existir.
+
+## Fora do escopo
+- Não alterar schema do banco (coluna continua `NOT NULL`).
+- Não alterar exibição em listas/popup/calendário (continuam mostrando o intervalo previsto, agora derivado de saída + 24h até a devolução real ser registrada).
