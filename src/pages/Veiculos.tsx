@@ -89,7 +89,9 @@ export default function Veiculos() {
       .channel("veiculos-agendamentos-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    // Polling a cada 15s para garantir atualização do status
+    const pollId = setInterval(load, 15_000);
+    return () => { supabase.removeChannel(channel); clearInterval(pollId); };
   }, []);
 
   // Deriva status efetivo: agendamento ativo vira "reservado" (futuro) ou "em_uso" (já saiu)
@@ -114,14 +116,14 @@ export default function Veiculos() {
     return `${h}h${m.toString().padStart(2, "0")}m`;
   };
 
-  // Notificações por voz (admin) — toca quando o status efetivo muda
+  // Notificações por voz (admin) — narra todos ao entrar; depois só fala quem mudar
   const prevStatusRef = useRef<Map<string, string>>(new Map());
   const initializedRef = useRef(false);
   useEffect(() => {
     if (!isAdmin) return;
     const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+    if (!canSpeak) return;
     const speak = (texto: string) => {
-      if (!canSpeak) return;
       const u = new SpeechSynthesisUtterance(texto);
       u.lang = "pt-BR";
       u.rate = 1;
@@ -129,29 +131,26 @@ export default function Veiculos() {
     };
     const relevantes = new Set(["disponivel", "reservado", "em_uso"]);
     const prev = prevStatusRef.current;
-    if (!initializedRef.current) {
-      for (const v of rowsEfetivos) prev.set(v.id, v.status as string);
-      initializedRef.current = true;
-      return;
-    }
+    const montarFrase = (v: Veiculo, status: string, info: AgInfo | undefined) => {
+      const motorista = info?.motoristaNome ?? "";
+      if (status === "reservado") return `O veículo ${v.modelo}, placa ${v.placa}, foi reservado pelo condutor ${motorista}.`;
+      if (status === "em_uso") return `O veículo ${v.modelo}, placa ${v.placa}, está em uso pelo condutor ${motorista}.`;
+      if (status === "disponivel") return `O veículo ${v.modelo}, placa ${v.placa}, está disponível.`;
+      return "";
+    };
     for (const v of rowsEfetivos) {
       const status = v.status as string;
+      if (!relevantes.has(status)) {
+        prev.set(v.id, status);
+        continue;
+      }
       const anterior = prev.get(v.id);
       if (anterior === status) continue;
-      prev.set(v.id, status);
-      if (!relevantes.has(status)) continue;
-      const info = agendamentosAtivos.get(v.id);
-      const motorista = info?.motoristaNome ?? "";
-      let frase = "";
-      if (status === "reservado") {
-        frase = `O veículo ${v.modelo}, placa ${v.placa}, foi reservado pelo condutor ${motorista}.`;
-      } else if (status === "em_uso") {
-        frase = `O veículo ${v.modelo}, placa ${v.placa}, está em uso pelo condutor ${motorista}.`;
-      } else if (status === "disponivel") {
-        frase = `O veículo ${v.modelo}, placa ${v.placa}, está disponível.`;
-      }
+      const frase = montarFrase(v, status, agendamentosAtivos.get(v.id));
       if (frase) speak(frase);
+      prev.set(v.id, status);
     }
+    initializedRef.current = true;
   }, [rowsEfetivos, agendamentosAtivos, isAdmin]);
 
   const filtered = useMemo(() => {

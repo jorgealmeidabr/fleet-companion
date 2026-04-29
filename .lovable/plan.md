@@ -1,61 +1,72 @@
-# Notificações por voz na página de Veículos (admin)
+## Ajustes no sistema de voz da página Veículos (admin)
 
-Adicionar narração automática via Web Speech API (`speechSynthesis`) na página `/veiculos` sempre que o status efetivo de um veículo mudar. Apenas admins ouvem.
+Refinar o efeito de narração em `src/pages/Veiculos.tsx` para: (a) ler todos os veículos em sequência ao entrar na página, (b) fazer polling a cada 15s buscando status atualizado, e (c) só falar quando o status efetivo mudar em relação ao último lido.
 
-## Comportamento
+### Comportamento
 
-Frases (pt-BR), com substituição dos dados reais do agendamento ativo:
+- **Entrada na página (admin):** enfileirar uma narração por veículo, na ordem de `rowsEfetivos`, usando as frases já definidas:
+  - Disponível: "O veículo {MODELO}, placa {PLACA}, está disponível."
+  - Reservado: "O veículo {MODELO}, placa {PLACA}, foi reservado pelo condutor {NOME}."
+  - Em uso: "O veículo {MODELO}, placa {PLACA}, está em uso pelo condutor {NOME}."
+  - Apenas status `disponivel | reservado | em_uso` são narrados (ignorar `manutencao`/`inativo`).
+  - Como `speechSynthesis.speak` já enfileira utterances nativamente, basta chamar `speak(...)` em loop — o navegador toca uma após a outra.
 
-- Reservado: "O veículo {MODELO}, placa {PLACA}, foi reservado pelo condutor {NOME DO MOTORISTA}."
-- Em uso: "O veículo {MODELO}, placa {PLACA}, está em uso pelo condutor {NOME DO MOTORISTA}."
-- Disponível: "O veículo {MODELO}, placa {PLACA}, está disponível."
+- **Polling 15s:** novo `setInterval` que recarrega `agendamentos` ativos (mesma query de hoje) e dispara recomputação. O canal realtime continua existindo para reagir mais rápido a mudanças, mas o polling garante o ciclo de 15s pedido.
 
-Regras:
-- Toca somente quando o status mudar em relação ao último estado conhecido daquele veículo.
-- Nunca repete para o mesmo status do mesmo veículo.
-- Não fala em outros status (manutencao, inativo) — apenas nas três transições acima.
-- Sem áudio externo — apenas `window.speechSynthesis` com `SpeechSynthesisUtterance` (`lang = "pt-BR"`).
-- Visível/audível apenas para `isAdmin`.
+- **Anti-repetição:** manter `prevStatusRef: Map<veiculoId, status>`. Só falar quando `status !== prev`. Após falar (ou na inicialização, antes do primeiro lote), atualizar o map com o status atual.
 
-## Mudanças técnicas (arquivo único)
+- **Inicialização vs. mudança:**
+  - Hoje o efeito popula o ref no primeiro tick e **não fala nada**. Mudar para: no primeiro tick, falar a frase de cada veículo (status relevante) e popular o ref.
+  - Em ticks subsequentes, falar só dos veículos cujo status mudou.
+
+### Mudanças técnicas (arquivo único)
 
 **`src/pages/Veiculos.tsx`**
 
-1. Criar um `useRef<Map<string, string>>` (`prevStatusRef`) para guardar o último status falado por `veiculo.id`.
-2. Criar helper local `speak(texto: string)`:
-   - Sai cedo se `!isAdmin` ou `typeof window === "undefined"` ou `!("speechSynthesis" in window)`.
-   - `const u = new SpeechSynthesisUtterance(texto); u.lang = "pt-BR"; u.rate = 1; window.speechSynthesis.speak(u);`
-3. Adicionar `useEffect` que depende de `[rowsEfetivos, agendamentosAtivos, isAdmin]`:
-   - Para cada `v` em `rowsEfetivos`, considerar apenas status `disponivel | reservado | em_uso`.
-   - Comparar com `prevStatusRef.current.get(v.id)`.
-   - Inicialização: na primeira execução, popular o ref sem falar (evita disparar narração para o estado já existente ao carregar a página). Usar uma flag `initializedRef` (boolean).
-   - Em mudanças subsequentes: montar a frase usando `v.modelo`, `v.placa` e `agendamentosAtivos.get(v.id)?.motoristaNome ?? ""` (para reservado/em_uso). Chamar `speak(frase)` e atualizar o ref.
-4. Não introduzir nenhuma UI nova — apenas o efeito colateral sonoro.
+1. **Polling 15s para agendamentos ativos**
+   - Extrair a função `load()` do `useEffect` atual para escopo do componente (ou manter dentro e adicionar um segundo `setInterval`).
+   - Adicionar `setInterval(load, 15_000)` ao lado do canal realtime, com cleanup.
 
-## Diagrama de fluxo
+2. **Efeito de voz — substituir lógica de inicialização**
+   - Remover o early-return que apenas popula o ref na primeira execução.
+   - Novo fluxo:
+     ```ts
+     for (const v of rowsEfetivos) {
+       const status = v.status as string;
+       if (!relevantes.has(status)) { prev.set(v.id, status); continue; }
+       const anterior = prev.get(v.id);
+       if (anterior === status) continue;             // anti-repetição
+       const frase = montarFrase(v, status, agendamentosAtivos.get(v.id));
+       if (frase) speak(frase);
+       prev.set(v.id, status);
+     }
+     ```
+   - Na primeira execução (`!initializedRef.current`), `prev` está vazio → todos os veículos relevantes são falados em sequência (atende ao requisito 1). Depois marca `initializedRef.current = true`.
+   - Em execuções seguintes (disparadas por polling/realtime/tick), só fala os que mudaram (atende aos requisitos 2 e 3).
+
+3. **Sem mudanças** em UI, badges, filtros, helper `speak`, ou idioma (`pt-BR` mantido).
+
+### Diagrama
 
 ```text
-rowsEfetivos muda
-   │
-   ▼
-para cada veículo:
-   status atual ≠ status anterior?
-        │ sim                          │ não
-        ▼                              ▼
-   isAdmin? ──não──► ignora        nada
-        │ sim
-        ▼
-   monta frase (Disponível/Reservado/Em uso)
-        │
-        ▼
-   speechSynthesis.speak(utterance pt-BR)
-        │
-        ▼
-   prevStatusRef.set(id, novoStatus)
+mount (admin)
+  │
+  ▼
+load() agendamentos ativos ──► rowsEfetivos
+  │
+  ▼
+efeito de voz: prev vazio → fala todos (em sequência via fila do speechSynthesis)
+  │
+  ▼
+setInterval 15s → load() → rowsEfetivos recomputa
+  │
+  ▼
+efeito de voz: para cada v, status ≠ prev[v.id]? → fala só esse  → prev[v.id] = status
 ```
 
-## Casos cobertos
-- Mudança via realtime (canal já existente em `agendamentos`) → `rowsEfetivos` recomputa → efeito dispara.
-- Transição automática `reservado → em_uso` pelo tick de 60s → também dispara (mudou o status efetivo).
-- Carregamento inicial da página: não fala nada (apenas registra o baseline).
-- Não-admin: efeito sai imediatamente, nenhuma fala ocorre.
+### Casos cobertos
+- Entrada na página: narra todos os veículos relevantes em ordem.
+- Mudança detectada via polling 15s ou realtime: narra apenas o(s) veículo(s) alterado(s).
+- Status inalterado: silêncio (regra anti-repetição).
+- Não-admin: efeito sai imediatamente, nenhum áudio.
+- `manutencao`/`inativo`: não narrados, mas registrados no ref para evitar narração ao transitar de volta sem mudança real.
