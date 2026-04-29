@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Agendamento } from "@/lib/types";
+import { janelaOcupada } from "@/lib/agendamento";
 import { cn } from "@/lib/utils";
 
 interface Props {
