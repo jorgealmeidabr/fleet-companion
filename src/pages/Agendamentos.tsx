@@ -759,6 +759,7 @@ export default function Agendamentos() {
             const kmRetorno = retForm.km_retorno;
             const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno < kmSaida;
             return (
+            <>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Veículo <span className="font-mono font-medium text-foreground">{veiculoMap[returning.veiculo_id]?.placa}</span> •
