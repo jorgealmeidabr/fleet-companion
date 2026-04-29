@@ -23,19 +23,10 @@ import {
   Plus, Search, MoreVertical, ShieldCheck, Mail, Eye, EyeOff, Copy,
   LayoutDashboard, Car, Users as UsersIcon, Wrench, Fuel, CalendarRange,
   ClipboardCheck, AlertTriangle, Bell, History, DollarSign, Lock, Check,
-  FileText, Clock, X,
+  FileText,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-
-interface PendingProfile {
-  id: string;
-  nome: string | null;
-  email: string | null;
-  cargo_pretendido: string | null;
-  status: "pendente" | "ativo" | "rejeitado";
-  created_at: string;
-}
 
 interface Row extends UsuarioPerfil {
   motorista?: Motorista | null;
@@ -79,25 +70,18 @@ export default function Usuarios() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [rows, setRows] = useState<Row[]>([]);
-  const [pendentes, setPendentes] = useState<PendingProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
   const [fTipo, setFTipo] = useState<"all" | "admin" | "usuario">("all");
   const [fStatus, setFStatus] = useState<"all" | "ativo" | "inativo">("all");
-  const [tab, setTab] = useState<"ativos" | "pendentes">("ativos");
 
   const [openModal, setOpenModal] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
-  const [approving, setApproving] = useState<PendingProfile | null>(null);
 
   const reload = async () => {
     setLoading(true);
-    const [perfisRes, pendentesRes] = await Promise.all([
-      (supabase as any).from("usuarios_perfis").select("*").order("created_at", { ascending: false }),
-      (supabase as any).from("profiles").select("id,nome,email,cargo_pretendido,status,created_at")
-        .eq("status", "pendente").order("created_at", { ascending: false }),
-    ]);
-    const list = (perfisRes.data ?? []) as UsuarioPerfil[];
+    const { data } = await (supabase as any).from("usuarios_perfis").select("*").order("created_at", { ascending: false });
+    const list = (data ?? []) as UsuarioPerfil[];
     const mIds = list.map(p => p.motorista_id).filter(Boolean);
     let mots: Record<string, Motorista> = {};
     if (mIds.length) {
@@ -105,7 +89,6 @@ export default function Usuarios() {
       ((ms ?? []) as Motorista[]).forEach(m => { mots[m.id] = m; });
     }
     setRows(list.map(p => ({ ...p, motorista: mots[p.motorista_id], email: mots[p.motorista_id]?.email })));
-    setPendentes((pendentesRes.data ?? []) as PendingProfile[]);
     setLoading(false);
   };
   useEffect(() => { reload(); }, []);
@@ -130,32 +113,6 @@ export default function Usuarios() {
     reload();
   };
 
-  const aprovar = async (p: PendingProfile, tipo: "admin" | "usuario") => {
-    const { error } = await (supabase as any).rpc("approve_user", {
-      _user_id: p.id,
-      _tipo: tipo,
-      _permissoes: null,
-      _cargo: p.cargo_pretendido,
-    });
-    if (error) {
-      toast({ title: "Erro ao aprovar", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Usuário aprovado", description: `${p.nome ?? p.email} agora pode acessar o sistema.` });
-    setApproving(null);
-    reload();
-  };
-
-  const rejeitar = async (p: PendingProfile) => {
-    const { error } = await (supabase as any).rpc("reject_user", { _user_id: p.id });
-    if (error) {
-      toast({ title: "Erro ao rejeitar", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Cadastro rejeitado" });
-    reload();
-  };
-
   return (
     <>
       <PageHeader
@@ -168,225 +125,106 @@ export default function Usuarios() {
         }
       />
 
-      {/* Tabs Ativos / Pendentes */}
-      <div className="mb-4 flex items-center gap-1 border-b border-border">
-        <button
-          onClick={() => setTab("ativos")}
-          className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
-            tab === "ativos" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Usuários ativos
-          {tab === "ativos" && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" />}
-        </button>
-        <button
-          onClick={() => setTab("pendentes")}
-          className={`relative px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${
-            tab === "pendentes" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Clock className="h-3.5 w-3.5" />
-          Aguardando aprovação
-          {pendentes.length > 0 && (
-            <Badge className="bg-warning/15 text-warning border border-warning/30 hover:bg-warning/15 h-5 px-1.5">
-              {pendentes.length}
-            </Badge>
-          )}
-          {tab === "pendentes" && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" />}
-        </button>
-      </div>
-
-      {tab === "ativos" && (
-        <>
-          <Card className="mb-4 shadow-card">
-            <CardContent className="grid gap-3 p-4 md:grid-cols-4">
-              <div className="relative md:col-span-2">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Buscar por nome ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
-              </div>
-              <Select value={fTipo} onValueChange={(v: any) => setFTipo(v)}>
-                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="admin">Apenas Admins</SelectItem>
-                  <SelectItem value="usuario">Apenas Usuários</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={fStatus} onValueChange={(v: any) => setFStatus(v)}>
-                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos status</SelectItem>
-                  <SelectItem value="ativo">Ativos</SelectItem>
-                  <SelectItem value="inativo">Inativos</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card">
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="p-10 text-center text-muted-foreground">Carregando...</div>
-              ) : filtered.length === 0 ? (
-                <EmptyState icon={UsersIcon} title="Nenhum usuário encontrado" description="Crie o primeiro usuário do sistema." />
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-border bg-muted/30 text-xs uppercase text-muted-foreground">
-                      <tr>
-                        <th className="px-4 py-3 text-left">Usuário</th>
-                        <th className="px-4 py-3 text-left">Cargo</th>
-                        <th className="px-4 py-3 text-left">E-mail</th>
-                        <th className="px-4 py-3 text-left">Tipo</th>
-                        <th className="px-4 py-3 text-left">Status</th>
-                        <th className="px-4 py-3 text-left">Último acesso</th>
-                        <th className="px-4 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map(r => (
-                        <tr key={r.id} className="border-b border-border hover:bg-muted/20">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                <AvatarImage src={r.motorista?.foto_url ?? undefined} />
-                                <AvatarFallback>{(r.motorista?.nome ?? "?").slice(0,2).toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium leading-tight">{r.motorista?.nome ?? "—"}</p>
-                                {r.must_change_password && <p className="text-[10px] text-warning">Convite pendente</p>}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">{r.motorista?.cargo ?? "—"}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{r.email ?? "—"}</td>
-                          <td className="px-4 py-3">
-                            <Badge className={r.tipo_conta === "admin" ? "bg-purple-600/15 text-purple-600 hover:bg-purple-600/15 border border-purple-600/30" : "bg-muted text-muted-foreground hover:bg-muted"}>
-                              {r.tipo_conta === "admin" ? "Admin" : "Usuário"}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant={r.ativo ? "default" : "secondary"} className={r.ativo ? "bg-success/15 text-success border border-success/30 hover:bg-success/15" : ""}>
-                              {r.ativo ? "Ativo" : "Inativo"}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground">{r.last_login ? fmtDateTime(r.last_login) : "—"}</td>
-                          <td className="px-4 py-3 text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button size="icon" variant="ghost" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => { setEditing(r); setOpenModal(true); }}>Editar</DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <ConfirmDialog
-                                  title={r.ativo ? "Desativar usuário" : "Ativar usuário"}
-                                  description={r.ativo ? "O usuário não conseguirá mais entrar no sistema." : "O usuário voltará a ter acesso."}
-                                  confirmLabel={r.ativo ? "Desativar" : "Ativar"}
-                                  destructive={r.ativo}
-                                  onConfirm={() => toggleAtivo(r)}
-                                  trigger={<DropdownMenuItem onSelect={e => e.preventDefault()}>{r.ativo ? "Desativar conta" : "Ativar conta"}</DropdownMenuItem>}
-                                />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {tab === "pendentes" && (
-        <Card className="shadow-card">
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="p-10 text-center text-muted-foreground">Carregando...</div>
-            ) : pendentes.length === 0 ? (
-              <EmptyState icon={Clock} title="Nenhuma solicitação pendente" description="Todos os cadastros foram processados." />
-            ) : (
-              <div className="divide-y divide-border">
-                {pendentes.map(p => (
-                  <div key={p.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback>{(p.nome ?? p.email ?? "?").slice(0,2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium leading-tight">{p.nome ?? "—"}</p>
-                        <p className="text-xs text-muted-foreground">{p.email}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          {p.cargo_pretendido && (
-                            <Badge variant="outline" className="text-xs">Cargo: {p.cargo_pretendido}</Badge>
-                          )}
-                          <span className="text-[10px] text-muted-foreground">Solicitado em {fmtDateTime(p.created_at)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="brand"
-                        onClick={() => setApproving(p)}
-                      >
-                        <Check className="mr-1 h-4 w-4" /> Aprovar
-                      </Button>
-                      <ConfirmDialog
-                        title="Rejeitar cadastro"
-                        description={`Rejeitar o acesso de ${p.nome ?? p.email}? O usuário verá a tela informando que o acesso foi negado.`}
-                        confirmLabel="Rejeitar"
-                        destructive
-                        onConfirm={() => rejeitar(p)}
-                        trigger={
-                          <Button size="sm" variant="outline">
-                            <X className="mr-1 h-4 w-4" /> Rejeitar
-                          </Button>
-                        }
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Modal de aprovação: escolher tipo de conta */}
-      <Dialog open={!!approving} onOpenChange={(o) => !o && setApproving(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Aprovar usuário</DialogTitle>
-            <DialogDescription>
-              Defina o tipo de conta para <strong>{approving?.nome ?? approving?.email}</strong>.
-              Você poderá ajustar permissões depois na aba de usuários ativos.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <button
-              onClick={() => approving && aprovar(approving, "usuario")}
-              className="w-full rounded-lg border border-border p-3 text-left hover:border-primary hover:bg-muted/40 transition"
-            >
-              <p className="font-semibold text-sm">Usuário</p>
-              <p className="text-xs text-muted-foreground">Acesso padrão (agendamentos, checklists e solicitações).</p>
-            </button>
-            <button
-              onClick={() => approving && aprovar(approving, "admin")}
-              className="w-full rounded-lg border border-border p-3 text-left hover:border-primary hover:bg-muted/40 transition"
-            >
-              <p className="font-semibold text-sm">Administrador</p>
-              <p className="text-xs text-muted-foreground">Acesso completo a todos os módulos do sistema.</p>
-            </button>
+      <Card className="mb-4 shadow-card">
+        <CardContent className="grid gap-3 p-4 md:grid-cols-4">
+          <div className="relative md:col-span-2">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Buscar por nome ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApproving(null)}>Cancelar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <Select value={fTipo} onValueChange={(v: any) => setFTipo(v)}>
+            <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="admin">Apenas Admins</SelectItem>
+              <SelectItem value="usuario">Apenas Usuários</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={fStatus} onValueChange={(v: any) => setFStatus(v)}>
+            <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos status</SelectItem>
+              <SelectItem value="ativo">Ativos</SelectItem>
+              <SelectItem value="inativo">Inativos</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-10 text-center text-muted-foreground">Carregando...</div>
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={UsersIcon} title="Nenhum usuário encontrado" description="Crie o primeiro usuário do sistema." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border bg-muted/30 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Usuário</th>
+                    <th className="px-4 py-3 text-left">Cargo</th>
+                    <th className="px-4 py-3 text-left">E-mail</th>
+                    <th className="px-4 py-3 text-left">Tipo</th>
+                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Último acesso</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(r => (
+                    <tr key={r.id} className="border-b border-border hover:bg-muted/20">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={r.motorista?.foto_url ?? undefined} />
+                            <AvatarFallback>{(r.motorista?.nome ?? "?").slice(0,2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium leading-tight">{r.motorista?.nome ?? "—"}</p>
+                            {r.must_change_password && <p className="text-[10px] text-warning">Convite pendente</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.motorista?.cargo ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.email ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <Badge className={r.tipo_conta === "admin" ? "bg-purple-600/15 text-purple-600 hover:bg-purple-600/15 border border-purple-600/30" : "bg-muted text-muted-foreground hover:bg-muted"}>
+                          {r.tipo_conta === "admin" ? "Admin" : "Usuário"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={r.ativo ? "default" : "secondary"} className={r.ativo ? "bg-success/15 text-success border border-success/30 hover:bg-success/15" : ""}>
+                          {r.ativo ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{r.last_login ? fmtDateTime(r.last_login) : "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => { setEditing(r); setOpenModal(true); }}>Editar</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <ConfirmDialog
+                              title={r.ativo ? "Desativar usuário" : "Ativar usuário"}
+                              description={r.ativo ? "O usuário não conseguirá mais entrar no sistema." : "O usuário voltará a ter acesso."}
+                              confirmLabel={r.ativo ? "Desativar" : "Ativar"}
+                              destructive={r.ativo}
+                              onConfirm={() => toggleAtivo(r)}
+                              trigger={<DropdownMenuItem onSelect={e => e.preventDefault()}>{r.ativo ? "Desativar conta" : "Ativar conta"}</DropdownMenuItem>}
+                            />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <UserWizard
         open={openModal}
@@ -430,9 +268,13 @@ function UserWizard({
   // Passo 2: permissões
   const [perms, setPerms] = useState<Permissoes>(PERMISSOES_DEFAULT);
 
+  // Detecção de motorista existente
+  const [existingMot, setExistingMot] = useState<Motorista | null>(null);
+  const [linkExisting, setLinkExisting] = useState(false);
+
   useEffect(() => {
     if (!open) return;
-    setStep(1); setSaving(false);
+    setStep(1); setSaving(false); setExistingMot(null); setLinkExisting(false);
     if (editing) {
       const m = editing.motorista;
       setNome(m?.nome ?? ""); setEmail(m?.email ?? ""); setTelefone(m?.telefone ?? "");
@@ -445,6 +287,28 @@ function UserWizard({
       setPerms(PERMISSOES_DEFAULT); setSenha(generatePassword());
     }
   }, [open, editing]);
+
+  // Verifica motorista existente por email (apenas no modo criar)
+  useEffect(() => {
+    if (editing) return;
+    const e = email.trim().toLowerCase();
+    if (!e || validarEmail(e)) { setExistingMot(null); return; }
+    const t = setTimeout(async () => {
+      const { data } = await supabase.from("motoristas").select("*").eq("email", e).limit(1);
+      const found = ((data ?? []) as Motorista[])[0];
+      if (found) {
+        setExistingMot(found);
+        // pré-preenche
+        if (!nome) setNome(found.nome);
+        if (!cargo) setCargo(found.cargo ?? "");
+        if (!telefone) setTelefone(found.telefone ?? "");
+        if (!cnhNum) setCnhNum(found.cnh_numero);
+        if (!cnhCat) setCnhCat(found.cnh_categoria);
+        if (!cnhVal) setCnhVal(found.cnh_validade);
+      } else setExistingMot(null);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [email, editing]);
 
   const passo1Valido = (): string | null => {
     if (nome.trim().length < 2) return "Informe o nome";
@@ -494,23 +358,31 @@ function UserWizard({
         }).eq("id", editing.id);
         toast({ title: "Usuário atualizado" });
       } else {
-        // === Modo criar: Edge Function usa auth.admin.createUser + inserts explícitos ===
+        // === Modo criar: edge function faz Auth + motorista + perfil ===
         const finalPerms = tipoConta === "admin" ? PERMISSOES_TUDO : perms;
-        const { error: createErr } = await (supabase as any).functions.invoke("admin-create-user", {
-          body: {
-            email: email.trim().toLowerCase(),
-            senha,
-            nome: nome.trim(),
-            telefone: telefone || null,
-            cargo: cargo.trim(),
-            cnh_numero: cnhNum || null,
-            cnh_categoria: cnhCat || "B",
-            cnh_validade: cnhVal || null,
-            tipo_conta: tipoConta,
-            permissoes: finalPerms,
+        const linkId = linkExisting && existingMot ? existingMot.id : null;
+
+        const { data: fnData, error: fnErr } = await supabase.functions.invoke(
+          "admin-create-user",
+          {
+            body: {
+              email,
+              senha,
+              nome,
+              telefone: telefone || null,
+              cargo,
+              cnh_numero: cnhNum || null,
+              cnh_categoria: cnhCat || null,
+              cnh_validade: cnhVal || null,
+              tipo_conta: tipoConta,
+              permissoes: finalPerms,
+              link_motorista_id: linkId,
+            },
           },
-        });
-        if (createErr) throw new Error(createErr.message);
+        );
+
+        if (fnErr) throw new Error(fnErr.message);
+        if (fnData && (fnData as any).error) throw new Error((fnData as any).error);
 
         toast({
           title: "Usuário criado",
@@ -556,6 +428,16 @@ function UserWizard({
               <Field label="Nome completo *"><Input value={nome} onChange={e => setNome(e.target.value)} /></Field>
               <Field label="E-mail (login) *"><Input type="email" disabled={!!editing} value={email} onChange={e => setEmail(e.target.value)} /></Field>
             </div>
+            {existingMot && !editing && (
+              <div className="rounded-md border border-info/30 bg-info/10 p-3 text-sm">
+                <p className="font-medium text-info">E-mail já cadastrado em motoristas: <span className="font-bold">{existingMot.nome}</span>.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Deseja vincular este cadastro existente?</p>
+                <div className="mt-2 flex gap-2">
+                  <Button size="sm" variant={linkExisting ? "default" : "outline"} onClick={() => setLinkExisting(true)}>Sim, vincular</Button>
+                  <Button size="sm" variant={!linkExisting ? "default" : "outline"} onClick={() => setLinkExisting(false)}>Não, criar novo</Button>
+                </div>
+              </div>
+            )}
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Telefone"><Input value={telefone} onChange={e => setTelefone(formatarTelefone(e.target.value))} placeholder="(00) 00000-0000" /></Field>
               <Field label="Cargo *"><Input value={cargo} onChange={e => setCargo(e.target.value)} placeholder="Motorista, Técnico, Supervisor..." /></Field>

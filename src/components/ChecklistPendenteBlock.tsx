@@ -36,8 +36,9 @@ export function ChecklistPendenteBlock() {
             Checklist pós-uso pendente
           </DialogTitle>
           <DialogDescription>
-            Finalize o checklist para concluir o processo de devolução do Veiculo.
-            {pendentes.length > 1 && ` (${pendentes.length} veículos pendentes)`}
+            Você devolveu {pendentes.length === 1 ? "um veículo" : `${pendentes.length} veículos`} e
+            ainda não preencheu o checklist pós-uso. É obrigatório registrá-lo antes
+            de continuar a usar o sistema.
           </DialogDescription>
         </DialogHeader>
 

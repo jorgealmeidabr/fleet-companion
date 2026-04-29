@@ -18,10 +18,6 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { cn } from "@/lib/utils";
-import { useChecklistPendente } from "@/hooks/useChecklistPendente";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 // Itens visuais (apenas UI). Apenas os que correspondem a colunas no banco são persistidos diretamente.
 const ITEMS: { key: keyof Pick<Checklist, "pneus_ok" | "luzes_ok">; label: string; hint: string }[] = [
@@ -57,8 +53,6 @@ export default function Checklists() {
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { pendentes, refresh: refreshPendentes } = useChecklistPendente();
-  const { perfil } = useAuth();
 
   useEffect(() => {
     supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[]));
@@ -71,7 +65,7 @@ export default function Checklists() {
   // ----- form state -----
   const initial = {
     veiculo_id: "",
-    motorista_id: perfil?.motorista_id ?? "",
+    motorista_id: "",
     data: new Date().toISOString().slice(0, 10),
     pneus_ok: true,
     luzes_ok: true,
@@ -85,9 +79,6 @@ export default function Checklists() {
   const [form, setForm] = useState(initial);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const pendenteDoVeiculo = form.veiculo_id
-    ? pendentes.find(p => p.agendamento.veiculo_id === form.veiculo_id)
-    : null;
 
   const set = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
 
@@ -125,15 +116,10 @@ export default function Checklists() {
     try {
       // Persistimos o nível como prefixo das observações para não depender de migração.
       const obsFinal = `[Nível combustível: ${form.nivel_combustivel}]${form.observacoes ? " " + form.observacoes : ""}`;
-      const checklistMotoristaId = perfil?.motorista_id ?? form.motorista_id ?? null;
-      const checklistData = pendenteDoVeiculo?.agendamento.data_retorno_real
-        ? new Date(pendenteDoVeiculo.agendamento.data_retorno_real).toISOString().slice(0, 10)
-        : form.data;
-
       await insert({
         veiculo_id: form.veiculo_id,
-        motorista_id: checklistMotoristaId,
-        data: checklistData,
+        motorista_id: form.motorista_id || null,
+        data: form.data,
         pneus_ok: form.pneus_ok,
         luzes_ok: form.luzes_ok,
         combustivel_ok,
@@ -146,8 +132,6 @@ export default function Checklists() {
       setForm(initial);
       setOpen(false);
       await reload();
-      await refreshPendentes();
-      window.dispatchEvent(new Event("checklist-pendente:refresh"));
     } finally { setSaving(false); }
   };
 
@@ -155,18 +139,6 @@ export default function Checklists() {
 
   return (
     <>
-      {pendentes.length > 0 && (
-        <Alert variant="destructive" className="mb-4 border-warning bg-warning/10 text-warning">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Devolução pendente</AlertTitle>
-          <AlertDescription>
-            Finalize o checklist para concluir o processo de devolução do Veiculo.
-            {pendentes.length === 1
-              ? ` Veículo: ${pendentes[0].veiculo_placa} — ${pendentes[0].veiculo_modelo}`
-              : ` (${pendentes.length} veículos pendentes)`}
-          </AlertDescription>
-        </Alert>
-      )}
       <PageHeader
         title="Checklists"
         subtitle="Inspeções pré-uso dos veículos"
