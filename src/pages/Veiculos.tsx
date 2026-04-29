@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { fmtNumber } from "@/lib/format";
 import type { Veiculo } from "@/lib/types";
-import { Plus, Search, MoreVertical, Car, Pencil, Eye, PowerOff } from "lucide-react";
+import { Plus, Search, MoreVertical, Car, Pencil, Eye, PowerOff, Bell, ChevronDown } from "lucide-react";
 import { validarPlaca, formatarPlaca, validarAno } from "@/lib/validators";
 import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
@@ -93,6 +93,71 @@ export default function Veiculos() {
     const pollId = setInterval(load, 15_000);
     return () => { supabase.removeChannel(channel); clearInterval(pollId); };
   }, []);
+
+  // Eventos recentes para ticker e feed (independente, polling 15s)
+  type Evento = {
+    key: string;
+    veiculoId: string;
+    placa: string;
+    motorista: string;
+    status: "reservado" | "em_uso" | "disponivel";
+    hora: string;
+  };
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [feedAberto, setFeedAberto] = useState(false);
+  useEffect(() => {
+    const placaPorId = new Map(rows.map(r => [r.id, r.placa] as const));
+    const loadEventos = async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id,veiculo_id,motorista_id,data_saida,data_retorno_real,status")
+        .in("status", ["ativo", "concluido"])
+        .order("data_saida", { ascending: false })
+        .limit(20);
+      const ags = (data ?? []) as Array<{ id: string; veiculo_id: string; motorista_id: string; data_saida: string; data_retorno_real: string | null; status: string }>;
+      const mids = Array.from(new Set(ags.map(a => a.motorista_id).filter(Boolean)));
+      let nomes: Record<string, string> = {};
+      if (mids.length) {
+        const { data: ms } = await supabase.from("motoristas").select("id,nome").in("id", mids);
+        nomes = Object.fromEntries(((ms ?? []) as Array<{ id: string; nome: string }>).map(m => [m.id, m.nome]));
+      }
+      const agora = Date.now();
+      const lista: Evento[] = ags.map(a => {
+        let status: Evento["status"];
+        let hora: string;
+        if (a.status === "concluido") {
+          status = "disponivel";
+          hora = a.data_retorno_real ?? a.data_saida;
+        } else if (new Date(a.data_saida).getTime() <= agora) {
+          status = "em_uso";
+          hora = a.data_saida;
+        } else {
+          status = "reservado";
+          hora = a.data_saida;
+        }
+        return {
+          key: `${a.id}-${status}`,
+          veiculoId: a.veiculo_id,
+          placa: placaPorId.get(a.veiculo_id) ?? "—",
+          motorista: nomes[a.motorista_id] ?? "—",
+          status,
+          hora,
+        };
+      });
+      lista.sort((a, b) => b.hora.localeCompare(a.hora));
+      setEventos(lista.slice(0, 10));
+    };
+    loadEventos();
+    const id = setInterval(loadEventos, 15_000);
+    return () => clearInterval(id);
+  }, [rows]);
+
+  const statusLabel = (s: Evento["status"]) =>
+    s === "reservado" ? "Reservado" : s === "em_uso" ? "Em uso" : "Disponível";
+  const statusDotClass = (s: Evento["status"]) =>
+    s === "disponivel" ? "bg-success" : s === "reservado" ? "bg-warning" : "bg-info";
+  const horaHHmm = (iso: string) =>
+    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   // Deriva status efetivo: agendamento ativo vira "reservado" (futuro) ou "em_uso" (já saiu)
   const rowsEfetivos = useMemo<Veiculo[]>(() => rows.map(v => {
@@ -216,6 +281,24 @@ export default function Veiculos() {
         </div>
       </div>
 
+      {/* Ticker de eventos (marquee) */}
+      {eventos.length > 0 && (
+        <div className="mb-4 overflow-hidden rounded-md border bg-muted/40">
+          <div className="flex w-max animate-marquee whitespace-nowrap py-2 hover:[animation-play-state:paused]">
+            {[...eventos, ...eventos].map((e, i) => (
+              <span key={`${e.key}-${i}`} className="mx-6 inline-flex items-center gap-2 text-xs">
+                <span className={`inline-block h-2 w-2 rounded-full ${statusDotClass(e.status)}`} />
+                <span className="font-mono font-semibold tracking-wider">{e.placa}</span>
+                <span className="text-muted-foreground">·</span>
+                <span>{statusLabel(e.status)}{e.status !== "disponivel" ? ` por ${e.motorista}` : ""}</span>
+                <span className="text-muted-foreground">·</span>
+                <span className="tabular-nums text-muted-foreground">{horaHHmm(e.hora)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <CardGridSkeleton count={8} />
       ) : filtered.length === 0 ? (
@@ -314,6 +397,59 @@ export default function Veiculos() {
           onSubmit={(v) => update(editing.id, v)}
         />
       )}
+
+      {/* Feed de eventos fixo (canto inferior direito) */}
+      <div className="fixed bottom-4 right-4 z-40">
+        {feedAberto ? (
+          <div className="w-80 rounded-lg border bg-card shadow-elevated animate-scale-in">
+            <div className="flex items-center justify-between border-b px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Eventos recentes</span>
+              </div>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setFeedAberto(false)}>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="max-h-80 divide-y overflow-auto">
+              {eventos.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-muted-foreground">Sem eventos recentes.</div>
+              ) : (
+                eventos.slice(0, 5).map(e => (
+                  <div key={e.key} className="flex items-center gap-2 px-3 py-2 text-xs">
+                    <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass(e.status)}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold tracking-wider">{e.placa}</span>
+                        <span className="text-muted-foreground">{statusLabel(e.status)}</span>
+                      </div>
+                      {e.status !== "disponivel" && (
+                        <div className="truncate text-muted-foreground">por {e.motorista}</div>
+                      )}
+                    </div>
+                    <span className="tabular-nums text-muted-foreground">{horaHHmm(e.hora)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <Button
+            size="icon"
+            variant="brand"
+            className="relative h-12 w-12 rounded-full shadow-elevated"
+            onClick={() => setFeedAberto(true)}
+            aria-label="Abrir feed de eventos"
+          >
+            <Bell className="h-5 w-5" />
+            {eventos.length > 0 && (
+              <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                {Math.min(eventos.length, 99)}
+              </span>
+            )}
+          </Button>
+        )}
+      </div>
     </>
   );
 }
