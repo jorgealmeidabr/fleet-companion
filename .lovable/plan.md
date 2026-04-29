@@ -1,29 +1,32 @@
-## Objetivo
-Remover o campo "Retorno previsto" do formulário de novo agendamento. O horário real de retorno já é capturado automaticamente na devolução.
+## Plano: Validação anti-fraude do "Km de retorno"
 
-## Contexto técnico
-A coluna `agendamentos.data_retorno_prevista` é `NOT NULL` no banco e é usada para:
-- Detecção de conflito de horário (cliente e RPC `check_agendamento_conflito`).
-- Renderização do intervalo no calendário, timeline e popup.
-- Sugestões de horários alternativos.
+### Objetivo
+No modal "Registrar devolução" (`src/pages/Agendamentos.tsx`), impedir que o usuário confirme a devolução quando o `Km de retorno` for menor que o `Km de saída` do agendamento. Hoje existe apenas um `toast` na função `confirmarDevolucao` — vamos reforçar com validação inline e bloqueio do botão.
 
-Por isso, não dá para simplesmente remover o valor — precisamos preencher automaticamente.
+### Arquivo alterado
+Apenas **`src/pages/Agendamentos.tsx`**.
 
-## Mudanças em `src/pages/Agendamentos.tsx`
+### Mudanças
 
-1. **Remover o input "Retorno previsto"** do `DialogContent` de novo agendamento (linhas ~645-654). A grade `sm:grid-cols-2` vira um único campo "Saída".
+1. **Cálculo derivado no render do modal** (logo antes do JSX do `Dialog` de devolução):
+   - `const kmSaida = returning?.km_saida ?? 0;`
+   - `const kmRetorno = retForm.km_retorno;`
+   - `const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno < kmSaida;`
 
-2. **Auto-preencher `data_retorno_prevista`** sempre que o usuário alterar "Saída":
-   - Calcular `data_saida + 24h` e gravar no estado `form.data_retorno_prevista` no formato `YYYY-MM-DDTHH:mm`.
-   - Assim, toda a lógica existente de conflito, timeline e RPC continua funcionando sem alteração.
+2. **Mensagem de erro inline** abaixo do `Input` de Km de retorno (linha ~762):
+   - Quando `kmInvalido` for `true`, exibir:
+     > "Km de retorno inválido. O valor não pode ser menor que o Km de saída."
+   - Estilo: `text-xs text-destructive` (mesmo padrão usado em `FormDialog`).
+   - Adicionar `aria-invalid={kmInvalido}` e borda destrutiva no `Input` (`className={kmInvalido ? "border-destructive" : ""}`).
 
-3. **Texto auxiliar** abaixo do campo Saída:
-   *"O horário de retorno será registrado automaticamente na devolução do veículo."*
+3. **Bloquear o botão "Confirmar devolução"** (linha ~795):
+   - Adicionar `kmInvalido || kmRetorno == null` ao `disabled` existente:
+     `disabled={savingDevolucao || uploadingFoto || kmInvalido || kmRetorno == null}`
 
-4. **Sugestões de horário** (quando há conflito): o botão de sugestão hoje seta `data_saida` e `data_retorno_prevista` com o intervalo sugerido — manter esse comportamento (apenas usado internamente).
+4. **Atualizar a mensagem do toast** em `confirmarDevolucao` (linha 321) para o texto completo solicitado, mantendo a checagem como segunda linha de defesa:
+   > "Km de retorno inválido. O valor não pode ser menor que o Km de saída."
 
-5. Nenhuma alteração em validação de submit (`!form.data_retorno_prevista`) é necessária, pois o valor sempre estará preenchido automaticamente quando `data_saida` existir.
-
-## Fora do escopo
-- Não alterar schema do banco (coluna continua `NOT NULL`).
-- Não alterar exibição em listas/popup/calendário (continuam mostrando o intervalo previsto, agora derivado de saída + 24h até a devolução real ser registrada).
+### Comportamento resultante
+- Enquanto o KM digitado for menor que o KM de saída, aparece mensagem vermelha embaixo do campo, o `Input` ganha borda vermelha e o botão "Confirmar devolução" fica desabilitado.
+- Se por qualquer motivo a chamada chegar a `confirmarDevolucao`, o `toast` destrutivo bloqueia a submissão.
+- Nenhuma outra lógica (foto do hodômetro, status, navegação para checklist) é alterada.
