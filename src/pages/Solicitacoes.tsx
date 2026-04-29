@@ -191,28 +191,16 @@ export default function Solicitacoes() {
   };
 
   const downloadPdf = async (r: Request) => {
-    const filename = `${r.protocol}.pdf`;
-    try {
-      // Tenta baixar o PDF salvo no storage via fetch (evita ERR_BLOCKED_BY_CLIENT
-      // de adblockers quando se abre a URL do Supabase em nova aba).
-      if (r.pdf_url) {
-        const res = await fetch(r.pdf_url, { cache: "no-store" });
-        if (res.ok) {
-          const blob = await res.blob();
-          downloadBlob(blob, filename);
-          return;
-        }
-      }
-    } catch {
-      // cai para regeneração local
+    if (r.pdf_url) {
+      window.open(r.pdf_url, "_blank");
+      return;
     }
-    // regenera localmente como fallback
+    // regenerar
     const veic = veicMap[r.vehicle_id] ?? null;
     const solicitante = usersMap[r.user_id] || "—";
     const blob = await buildRequestPdf({ request: r, veiculo: veic, solicitante });
-    downloadBlob(blob, filename);
+    downloadBlob(blob, `${r.protocol}.pdf`);
   };
-
 
   // ========== MÉTRICAS ADMIN ==========
   const counts = useMemo(() => ({

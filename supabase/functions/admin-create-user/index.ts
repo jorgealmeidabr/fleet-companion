@@ -1,5 +1,5 @@
 // Edge Function: admin-create-user
-// Cria usuário no Auth via service role e grava os registros necessários explicitamente.
+// Cria um usuário no Auth + motorista + perfil. Apenas admins autenticados.
 // Deploy:  supabase functions deploy admin-create-user --project-ref <ref>
 // Secrets necessários no projeto Supabase:
 //   - SUPABASE_URL                  (já vem por padrão)
@@ -26,36 +26,14 @@ interface Payload {
   cnh_validade?: string | null;
   tipo_conta: "admin" | "usuario";
   permissoes: Record<string, boolean>;
+  link_motorista_id?: string | null; // se vincular a motorista existente
 }
-
-const fallbackCnhValidade = () => {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() + 5);
-  return d.toISOString().slice(0, 10);
-};
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-
-const isAlreadyRegistered = (message?: string | null) =>
-  String(message ?? "").toLowerCase().includes("already") ||
-  String(message ?? "").toLowerCase().includes("registered");
-
-const findUserByEmail = async (admin: any, email: string) => {
-  for (let page = 1; page <= 10; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) throw error;
-    const found = data?.users?.find((u: { email?: string }) =>
-      String(u.email ?? "").toLowerCase() === email,
-    );
-    if (found) return found;
-    if (!data?.users || data.users.length < 1000) break;
-  }
-  return null;
-};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -75,21 +53,12 @@ Deno.serve(async (req) => {
   // 1. Autenticar o caller e verificar se é admin
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) return json({ error: "Não autenticado" }, 401);
-  const token = authHeader.slice("Bearer ".length).trim();
-  if (!token) return json({ error: "Token ausente" }, 401);
 
-  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    method: "GET",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${token}`,
-    },
+  const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
   });
-  const caller = await userRes.json().catch(() => null) as { id?: string; error?: string; msg?: string } | null;
-  if (!userRes.ok || !caller?.id) {
-    return json({ error: "Não autenticado" }, 401);
-  }
-  const callerUserId = caller.id;
+  const { data: callerData, error: callerErr } = await callerClient.auth.getUser();
+  if (callerErr || !callerData?.user) return json({ error: "Sessão inválida" }, 401);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -98,7 +67,7 @@ Deno.serve(async (req) => {
   const { data: perfil, error: perfilErr } = await admin
     .from("usuarios_perfis")
     .select("tipo_conta, ativo")
-    .eq("user_id", callerUserId)
+    .eq("user_id", callerData.user.id)
     .maybeSingle();
 
   if (perfilErr) return json({ error: "Erro ao verificar perfil: " + perfilErr.message }, 500);
@@ -116,110 +85,74 @@ Deno.serve(async (req) => {
   const {
     email, senha, nome, telefone, cargo,
     cnh_numero, cnh_categoria, cnh_validade,
-    tipo_conta, permissoes,
+    tipo_conta, permissoes, link_motorista_id,
   } = body;
 
-  const cleanEmail = String(email ?? "").trim().toLowerCase();
-  const cleanNome = String(nome ?? "").trim();
-  const cleanCargo = String(cargo ?? "").trim();
-  if (!cleanEmail || !senha || !cleanNome || !cleanCargo || !tipo_conta) {
+  if (!email || !senha || !nome || !cargo || !tipo_conta) {
     return json({ error: "Campos obrigatórios ausentes (email, senha, nome, cargo, tipo_conta)" }, 400);
   }
   if (senha.length < 8) return json({ error: "Senha deve ter ao menos 8 caracteres" }, 400);
   if (!["admin", "usuario"].includes(tipo_conta)) return json({ error: "tipo_conta inválido" }, 400);
 
-  // 3. Criar usuário no Auth com privilégios administrativos.
-  // Se o e-mail já existe (tentativa anterior parcial), reutiliza o Auth user e garante os dados abaixo.
-  let authUser: { id: string } | null = null;
-  let createdNow = false;
+  // 3. Criar usuário no Auth
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email: cleanEmail,
+    email,
     password: senha,
     email_confirm: true,
-    user_metadata: { nome: cleanNome, cargo: cleanCargo },
+    user_metadata: { nome, cargo },
   });
 
-  if (created?.user) {
-    authUser = created.user;
-    createdNow = true;
-  } else if (isAlreadyRegistered(createErr?.message)) {
-    try {
-      authUser = await findUserByEmail(admin, cleanEmail);
-    } catch (err) {
-      return json({ error: "Erro ao localizar usuário já cadastrado: " + (err instanceof Error ? err.message : String(err)) }, 400);
-    }
-    if (!authUser) return json({ error: "E-mail já cadastrado, mas usuário não foi encontrado no Auth" }, 400);
-
-    const { error: updateAuthErr } = await admin.auth.admin.updateUserById(authUser.id, {
-      password: senha,
-      email_confirm: true,
-      user_metadata: { nome: cleanNome, cargo: cleanCargo },
-    });
-    if (updateAuthErr) return json({ error: "Erro ao atualizar usuário existente no Auth: " + updateAuthErr.message }, 400);
-  } else {
-    return json({ error: "Erro auth: " + (createErr?.message ?? "desconhecido") }, 400);
+  if (createErr || !created?.user) {
+    return json({ error: "Falha ao criar usuário no Auth: " + (createErr?.message ?? "desconhecido") }, 400);
   }
-  const userId = authUser.id;
+  const userId = created.user.id;
 
   // Helper: rollback do auth user em caso de erro nas etapas seguintes
   const rollback = async (msg: string) => {
-    if (createdNow) await admin.auth.admin.deleteUser(userId).catch(() => {});
+    await admin.auth.admin.deleteUser(userId).catch(() => {});
     return json({ error: msg }, 400);
   };
 
-  // 4. Garante public.profiles manualmente. Não depende do trigger on_auth_user_created.
-  const { error: profileErr } = await admin
-    .from("profiles")
-    .upsert({ id: userId, nome: cleanNome, email: cleanEmail }, { onConflict: "id" });
-  if (profileErr) return rollback("Erro ao criar profile: " + profileErr.message);
-
-  // 5. Admin: promover por RPC e finalizar. Não buscar/alterar motorista depois.
-  if (tipo_conta === "admin") {
-    const { error: promoErr } = await admin.rpc("promote_to_admin", { _email: cleanEmail });
-    if (promoErr) return rollback("Erro ao promover admin: " + promoErr.message);
-    return json({ user_id: userId, tipo_conta: "admin" });
+  // 4. Vincular ou criar motorista
+  let motoristaId: string;
+  if (link_motorista_id) {
+    const { error: linkErr } = await admin
+      .from("motoristas")
+      .update({ user_id: userId })
+      .eq("id", link_motorista_id);
+    if (linkErr) return rollback("Erro ao vincular motorista: " + linkErr.message);
+    motoristaId = link_motorista_id;
+  } else {
+    const fallbackValidade = new Date(Date.now() + 5 * 365 * 86400000).toISOString().slice(0, 10);
+    const { data: mNew, error: mErr } = await admin
+      .from("motoristas")
+      .insert({
+        nome,
+        email,
+        telefone: telefone || null,
+        cargo,
+        cnh_numero: cnh_numero || "00000000000",
+        cnh_categoria: cnh_categoria || "B",
+        cnh_validade: cnh_validade || fallbackValidade,
+        user_id: userId,
+        status: "ativo",
+      })
+      .select("id")
+      .single();
+    if (mErr || !mNew) return rollback("Erro ao criar motorista: " + (mErr?.message ?? ""));
+    motoristaId = mNew.id;
   }
 
-  // 6. Motorista: garante motorista explicitamente e cria usuarios_perfis explicitamente.
-  // Em retentativas com e-mail já existente, reutiliza o motorista já vinculado ao Auth user.
-  const { data: existingMotorista, error: existingMotoristaErr } = await admin
-    .from("motoristas")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (existingMotoristaErr) return rollback("Erro ao verificar motorista existente: " + existingMotoristaErr.message);
-
-  const motoristaPayload = {
-    user_id: userId,
-    nome: cleanNome,
-    email: cleanEmail,
-    telefone: telefone || null,
-    cargo: cleanCargo || null,
-    cnh_numero: cnh_numero || "00000000000",
-    cnh_categoria: cnh_categoria || "B",
-    cnh_validade: cnh_validade || fallbackCnhValidade(),
-    status: "ativo",
-  };
-
-  const { data: motorista, error: motoristaErr } = existingMotorista
-    ? await admin.from("motoristas").update(motoristaPayload).eq("id", existingMotorista.id).select("id").single()
-    : await admin
-    .from("motoristas")
-    .insert(motoristaPayload)
-    .select("id")
-    .single();
-  if (motoristaErr || !motorista) return rollback("Erro ao criar motorista: " + (motoristaErr?.message ?? "desconhecido"));
-  const motoristaId = motorista.id;
-
-  const { error: perfilErr } = await admin.from("usuarios_perfis").upsert({
+  // 5. Criar perfil
+  const { error: pErr } = await admin.from("usuarios_perfis").insert({
     user_id: userId,
     motorista_id: motoristaId,
-    tipo_conta: "usuario",
+    tipo_conta,
     permissoes,
     ativo: true,
     must_change_password: true,
-  }, { onConflict: "user_id" });
-  if (perfilErr) return rollback("Erro ao criar perfil de acesso: " + perfilErr.message);
+  });
+  if (pErr) return rollback("Erro ao criar perfil: " + pErr.message);
 
-  return json({ user_id: userId, motorista_id: motoristaId, tipo_conta: "usuario" });
+  return json({ user_id: userId, motorista_id: motoristaId });
 });

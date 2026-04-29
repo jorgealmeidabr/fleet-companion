@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
-import { useChecklistPendente } from "@/hooks/useChecklistPendente";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
@@ -23,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { MotoristaAutocomplete } from "@/components/MotoristaAutocomplete";
 import { uploadFiles } from "@/lib/storage";
 import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
-import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -55,79 +52,6 @@ export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
   const { isAdmin, perfil = null } = useAuth();
   const { toast } = useToast();
-  const { pendentes: checklistPendentes } = useChecklistPendente();
-  const temPendencia = !isAdmin && checklistPendentes.length > 0;
-  const navigate = useNavigate();
-
-  // Toca 3 bipes curtos via WebAudio + mensagem de voz (TTS)
-  const playReturnBeeps = () => {
-    // 1) Dispara a fala IMEDIATAMENTE no gesto do usuário (necessário em
-    //    navegadores como Chrome/Safari que bloqueiam fala fora de gesto).
-    //    A fala é "engatilhada" agora e segura por ~900ms via pause(),
-    //    para tocar logo após os bipes.
-    let utter: SpeechSynthesisUtterance | null = null;
-    try {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        const synth = window.speechSynthesis;
-        synth.cancel();
-        utter = new SpeechSynthesisUtterance(
-          "Finalize o checklist para concluir o processo de devolução do veículo."
-        );
-        utter.lang = "pt-BR";
-        utter.rate = 1;
-        utter.pitch = 1;
-        utter.volume = 1;
-        const pickVoice = () => {
-          const voices = synth.getVoices();
-          const ptVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("pt"));
-          if (ptVoice && utter) utter.voice = ptVoice;
-        };
-        pickVoice();
-        if (!synth.getVoices().length) {
-          // Algumas plataformas carregam vozes de forma assíncrona
-          synth.onvoiceschanged = () => pickVoice();
-        }
-        // Inicia (dentro do gesto) e pausa para sincronizar com o fim dos bipes
-        synth.speak(utter);
-        synth.pause();
-        setTimeout(() => {
-          try { synth.resume(); } catch { /* ignora */ }
-        }, 950);
-        // Fallback: se pause/resume não for suportado, força um novo speak
-        setTimeout(() => {
-          try {
-            if (!synth.speaking && utter) {
-              synth.cancel();
-              synth.speak(utter);
-            }
-          } catch { /* ignora */ }
-        }, 1100);
-      }
-    } catch { /* ignora */ }
-
-    // 2) Bipes
-    try {
-      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-      if (!Ctx) return;
-      const ctx = new Ctx();
-      const beep = (start: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "square";
-        osc.frequency.value = 880;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
-        gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + start + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + 0.15);
-        osc.start(ctx.currentTime + start);
-        osc.stop(ctx.currentTime + start + 0.16);
-      };
-      // 3 bipes com ~300ms de intervalo (0ms, 300ms, 600ms)
-      beep(0); beep(0.3); beep(0.6);
-      setTimeout(() => ctx.close().catch(() => {}), 1200);
-    } catch { /* ignora */ }
-  };
 
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
@@ -227,15 +151,6 @@ export default function Agendamentos() {
   // ---- Confirmar novo agendamento
   const confirmarAgendamento = async () => {
     if (!pickedVeiculo) return;
-    if (temPendencia) {
-      toast({
-        title: "Checklist pós-uso pendente",
-        description: "Finalize o checklist da última devolução antes de reservar outro veículo.",
-        variant: "destructive",
-      });
-      navigate("/checklists");
-      return;
-    }
     if (!form.motorista_id || !form.data_saida || !form.data_retorno_prevista) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
@@ -332,9 +247,7 @@ export default function Agendamentos() {
       await reloadVeiculos();
       setReturning(null);
       setRetForm({});
-      playReturnBeeps();
-      toast({ title: "Devolução registrada", description: "Finalize o checklist para concluir o processo." });
-      navigate("/checklists");
+      toast({ title: "Devolução registrada", description: "Lembre-se: o checklist pós-uso é obrigatório." });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
@@ -346,9 +259,8 @@ export default function Agendamentos() {
     await update(a.id, { status: "cancelado" } as Partial<Agendamento>);
   };
 
-  // Veículo é selecionável se NÃO está em manutencao/inativo E o usuário não tem checklist pendente.
-  const isVeiculoSelecionavel = (v: Veiculo) =>
-    !temPendencia && v.status !== "manutencao" && v.status !== "inativo";
+  // Veículo é selecionável se NÃO está em manutencao/inativo (regra mantida).
+  const isVeiculoSelecionavel = (v: Veiculo) => v.status !== "manutencao" && v.status !== "inativo";
 
   return (
     <>
@@ -597,7 +509,6 @@ export default function Agendamentos() {
             <DialogDescription className="sr-only">Reservar o veículo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            {pickedVeiculo && <VeiculoChecklistStatus veiculoId={pickedVeiculo.id} />}
             <div className="space-y-1.5">
               <Label>Motorista *</Label>
               <MotoristaAutocomplete

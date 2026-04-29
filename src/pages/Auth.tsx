@@ -4,8 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { validarEmail } from "@/lib/validators";
-import { useIdle } from "@/hooks/useIdle";
-import { IdleScreen } from "@/components/IdleScreen";
 import brqLogo from "@/assets/brq-logo-frota.png";
 
 export default function Auth() {
@@ -16,7 +14,6 @@ export default function Auth() {
   const [forgot, setForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const { idle, wake } = useIdle(50000, !user);
 
   if (!isSupabaseConfigured) return <Navigate to="/setup" replace />;
   if (user) return <Navigate to="/" replace />;
@@ -277,16 +274,12 @@ export default function Auth() {
               </button>
 
               <p className="brq-note">
-                Não tem conta?{" "}
-                <a href="/cadastro" className="text-amber-500 hover:text-amber-400 font-medium">
-                  Solicitar cadastro
-                </a>
+                Acesso restrito da BRQ BrasilQuimia. Solicite seu cadastro ao administrador.
               </p>
             </form>
           )}
         </aside>
       </div>
-      {idle && <IdleScreen onExit={wake} />}
     </>
   );
 }

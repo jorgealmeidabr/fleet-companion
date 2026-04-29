@@ -16,9 +16,6 @@ import { useRequestBadge } from "@/hooks/useRequestBadge";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { ChecklistPendenteBlock } from "@/components/ChecklistPendenteBlock";
-import { IdleScreen } from "@/components/IdleScreen";
-import { useIdle } from "@/hooks/useIdle";
-
 import { cn } from "@/lib/utils";
 import type { ModuloPermissao } from "@/lib/types";
 
@@ -153,15 +150,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { counts } = useAlerts();
   const alertCount = isAdmin ? counts.critico + counts.atencao : 0;
   const requestCount = useRequestBadge();
-  const { idle, wake } = useIdle(50000, !!user);
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar alertCount={alertCount} requestCount={requestCount} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border bg-background/80 px-3 py-1 backdrop-blur">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
             <SidebarTrigger />
+            <div className="ml-2 hidden text-sm font-medium text-muted-foreground md:block" />
             <div className="ml-auto flex items-center gap-2">
               <GlobalSearch />
               {tipoConta && (
@@ -185,7 +182,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <ChecklistPendenteBlock />
       </div>
-      {idle && <IdleScreen onExit={wake} />}
     </SidebarProvider>
   );
 }
