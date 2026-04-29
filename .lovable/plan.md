@@ -1,48 +1,61 @@
-## Plano: Status em tempo real nos cards de Veículos
+# Notificações por voz na página de Veículos (admin)
 
-### Objetivo
-Na página `/veiculos`:
-1. Trocar o subtítulo para **"Estado da frota em tempo real"**.
-2. Em cada card, exibir informação contextual conforme o status efetivo:
-   - **Disponível** → sem alteração.
-   - **Reservado** (agendamento futuro, ainda não iniciado) → mostrar nome do motorista e horário de início no formato `HH:mm`.
-   - **Em uso** (agendamento ativo cujo `data_saida` já passou e `data_retorno_real` ainda é nulo) → badge azul "Em uso" + nome do motorista + tempo decorrido (ex: `Em uso há 1h30m`).
+Adicionar narração automática via Web Speech API (`speechSynthesis`) na página `/veiculos` sempre que o status efetivo de um veículo mudar. Apenas admins ouvem.
 
-### Arquivo principal
-`src/pages/Veiculos.tsx`.
+## Comportamento
 
-### Mudanças
+Frases (pt-BR), com substituição dos dados reais do agendamento ativo:
 
-1. **Subtítulo** (linha 92): `subtitle="Estado da frota em tempo real"`.
+- Reservado: "O veículo {MODELO}, placa {PLACA}, foi reservado pelo condutor {NOME DO MOTORISTA}."
+- Em uso: "O veículo {MODELO}, placa {PLACA}, está em uso pelo condutor {NOME DO MOTORISTA}."
+- Disponível: "O veículo {MODELO}, placa {PLACA}, está disponível."
 
-2. **Carregar agendamentos completos** (substituir o `useEffect` atual, linhas 52–69):
-   - Em vez de só `Set<veiculo_id>`, manter um `Map<veiculo_id, { motoristaNome, dataSaida, status }>`.
-   - Query: `from("agendamentos").select("veiculo_id,data_saida,motorista_id,status").eq("status","ativo")` + join via segunda query em `motoristas` para pegar `nome` (ou `select("veiculo_id,data_saida,motoristas(nome)")` se houver FK; usar fallback com segunda chamada se necessário).
-   - Manter o canal realtime já existente.
+Regras:
+- Toca somente quando o status mudar em relação ao último estado conhecido daquele veículo.
+- Nunca repete para o mesmo status do mesmo veículo.
+- Não fala em outros status (manutencao, inativo) — apenas nas três transições acima.
+- Sem áudio externo — apenas `window.speechSynthesis` com `SpeechSynthesisUtterance` (`lang = "pt-BR"`).
+- Visível/audível apenas para `isAdmin`.
 
-3. **Status efetivo** (linhas 71–75): 
-   - Para cada veículo com agendamento ativo, comparar `data_saida` com `now`:
-     - `data_saida <= now` → status efetivo `"em_uso"`.
-     - `data_saida > now` → status efetivo `"reservado"`.
-   - Manter `manutencao` / `inativo` intactos.
-   - Acrescentar um `useState` que guarda um `tick` atualizado a cada 60s para que "há 1h30m" e a transição reservado→em_uso recalculem automaticamente (`useEffect` com `setInterval(..., 60_000)`).
+## Mudanças técnicas (arquivo único)
 
-4. **StatusBadge "Em uso" azul** (`src/components/StatusBadge.tsx`): trocar a classe de `em_uso` de warning (amarelo) para info (azul):
-   - `em_uso: { label: "Em uso", className: "bg-info/15 text-info border-info/20" }`
+**`src/pages/Veiculos.tsx`**
 
-5. **Renderização nos cards** (dentro de `<CardContent>`, após a linha "tipo · combustível"):
-   - Se status efetivo = `"reservado"` e há info de agendamento:
-     `Reservado para {nome} • {HH:mm}` (formatado de `data_saida`).
-   - Se status efetivo = `"em_uso"`:
-     `Em uso por {nome} • há {Xh Ym}`.
-   - Texto compacto, `text-xs text-muted-foreground` (nome em `text-foreground font-medium`).
+1. Criar um `useRef<Map<string, string>>` (`prevStatusRef`) para guardar o último status falado por `veiculo.id`.
+2. Criar helper local `speak(texto: string)`:
+   - Sai cedo se `!isAdmin` ou `typeof window === "undefined"` ou `!("speechSynthesis" in window)`.
+   - `const u = new SpeechSynthesisUtterance(texto); u.lang = "pt-BR"; u.rate = 1; window.speechSynthesis.speak(u);`
+3. Adicionar `useEffect` que depende de `[rowsEfetivos, agendamentosAtivos, isAdmin]`:
+   - Para cada `v` em `rowsEfetivos`, considerar apenas status `disponivel | reservado | em_uso`.
+   - Comparar com `prevStatusRef.current.get(v.id)`.
+   - Inicialização: na primeira execução, popular o ref sem falar (evita disparar narração para o estado já existente ao carregar a página). Usar uma flag `initializedRef` (boolean).
+   - Em mudanças subsequentes: montar a frase usando `v.modelo`, `v.placa` e `agendamentosAtivos.get(v.id)?.motoristaNome ?? ""` (para reservado/em_uso). Chamar `speak(frase)` e atualizar o ref.
+4. Não introduzir nenhuma UI nova — apenas o efeito colateral sonoro.
 
-6. **Helpers locais** (no topo do arquivo ou em `src/lib/format.ts`):
-   - `formatHHmm(iso: string)` → usa `Date` + `toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})`.
-   - `formatDuracao(desdeISO: string, now: number)` → calcula diferença e retorna `"1h30m"`, `"45m"`, `"2h"` etc.
+## Diagrama de fluxo
 
-### Observações
-- Os dados já estão em `agendamentos` + `motoristas`; nenhuma migration é necessária.
-- O realtime já existente no canal `agendamentos` recarrega o mapa quando algo muda (criação, devolução).
-- Filtro lateral por status continua funcionando porque usa `v.status` derivado.
-- Tipo `AgendamentoStatus` já inclui `"em_uso"`, então `StatusBadge` aceita sem mudanças adicionais.
+```text
+rowsEfetivos muda
+   │
+   ▼
+para cada veículo:
+   status atual ≠ status anterior?
+        │ sim                          │ não
+        ▼                              ▼
+   isAdmin? ──não──► ignora        nada
+        │ sim
+        ▼
+   monta frase (Disponível/Reservado/Em uso)
+        │
+        ▼
+   speechSynthesis.speak(utterance pt-BR)
+        │
+        ▼
+   prevStatusRef.set(id, novoStatus)
+```
+
+## Casos cobertos
+- Mudança via realtime (canal já existente em `agendamentos`) → `rowsEfetivos` recomputa → efeito dispara.
+- Transição automática `reservado → em_uso` pelo tick de 60s → também dispara (mudou o status efetivo).
+- Carregamento inicial da página: não fala nada (apenas registra o baseline).
+- Não-admin: efeito sai imediatamente, nenhuma fala ocorre.
