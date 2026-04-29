@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/lib/supabase";
-import { fmtDate, fmtDateTime, fmtBRL, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtDateTimeShort, fmtBRL, fmtNumber } from "@/lib/format";
 import type { Veiculo, Motorista, Agendamento, Manutencao, Abastecimento, Checklist, Multa } from "@/lib/types";
 import { Wrench, Fuel, ClipboardCheck, CalendarRange, AlertTriangle, Download } from "lucide-react";
 
