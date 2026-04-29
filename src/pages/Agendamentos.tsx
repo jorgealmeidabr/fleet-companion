@@ -366,7 +366,7 @@ export default function Agendamentos() {
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="novo">Novo Agendamento</TabsTrigger>
           <TabsTrigger value="ativos">
-            Ativos {ativos.length > 0 && <Badge variant="secondary" className="ml-2">{ativos.length}</Badge>}
+            Ativos {ativosVisiveis.length > 0 && <Badge variant="secondary" className="ml-2">{ativosVisiveis.length}</Badge>}
           </TabsTrigger>
         </TabsList>
 
