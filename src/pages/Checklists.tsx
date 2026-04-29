@@ -169,7 +169,7 @@ export default function Checklists() {
       )}
       <PageHeader
         title="Checklists"
-        subtitle="Inspeções pré-uso dos veículos"
+        subtitle="Inspeções pós-uso dos veículos"
         actions={
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setForm(initial); }}>
             <DialogTrigger asChild>
