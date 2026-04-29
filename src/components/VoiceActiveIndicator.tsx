@@ -3,15 +3,66 @@ import { useEffect, useRef, useState } from "react";
 const BAR_HEIGHTS = [10, 16, 22, 18, 14, 20, 12];
 const BAR_DELAYS = [0, 0.1, 0.2, 0.05, 0.15, 0.25, 0.1];
 
+type VoiceState = {
+  active: boolean;
+  text: string;
+  charIndex: number;
+  charLength: number;
+};
+
+const EVT = "voice-indicator-update";
+
+function dispatch(state: VoiceState) {
+  window.dispatchEvent(new CustomEvent<VoiceState>(EVT, { detail: state }));
+}
+
 let patched = false;
 function ensurePatched() {
   if (patched || typeof window === "undefined" || !window.speechSynthesis) return;
   patched = true;
   const synth = window.speechSynthesis;
   const original = synth.speak.bind(synth);
+
   synth.speak = (utterance: SpeechSynthesisUtterance) => {
     try {
-      (window as unknown as { __lastSpokenText?: string }).__lastSpokenText = utterance?.text ?? "";
+      const text = utterance?.text ?? "";
+
+      const prevStart = utterance.onstart;
+      utterance.onstart = (e) => {
+        dispatch({ active: true, text, charIndex: 0, charLength: 0 });
+        if (typeof prevStart === "function") prevStart.call(utterance, e);
+      };
+
+      const prevBoundary = utterance.onboundary;
+      utterance.onboundary = (e) => {
+        if (!e.name || e.name === "word") {
+          let len = (e as SpeechSynthesisEvent).charLength ?? 0;
+          if (!len) {
+            const rest = text.slice(e.charIndex);
+            const m = rest.match(/^\S+/);
+            len = m ? m[0].length : 0;
+          }
+          dispatch({
+            active: true,
+            text,
+            charIndex: e.charIndex,
+            charLength: len,
+          });
+        }
+        if (typeof prevBoundary === "function") prevBoundary.call(utterance, e);
+      };
+
+      const prevEnd = utterance.onend;
+      utterance.onend = (e) => {
+        dispatch({ active: false, text: "", charIndex: 0, charLength: 0 });
+        if (typeof prevEnd === "function") prevEnd.call(utterance, e);
+      };
+
+      const prevError = utterance.onerror;
+      utterance.onerror = (e) => {
+        dispatch({ active: false, text: "", charIndex: 0, charLength: 0 });
+        if (typeof prevError === "function") prevError.call(utterance, e);
+      };
     } catch {
       // ignore
     }
@@ -20,44 +71,53 @@ function ensurePatched() {
 }
 
 export function VoiceActiveIndicator() {
-  const [visible, setVisible] = useState(false);
+  const [state, setState] = useState<VoiceState>({
+    active: false,
+    text: "",
+    charIndex: 0,
+    charLength: 0,
+  });
   const [closing, setClosing] = useState(false);
-  const [text, setText] = useState("");
   const closeTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     ensurePatched();
 
-    const id = window.setInterval(() => {
-      const speaking = window.speechSynthesis.speaking;
-      const lastText = (window as unknown as { __lastSpokenText?: string }).__lastSpokenText ?? "";
-
-      if (speaking) {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<VoiceState>).detail;
+      if (detail.active) {
         if (closeTimer.current) {
           window.clearTimeout(closeTimer.current);
           closeTimer.current = null;
         }
         setClosing(false);
-        setVisible(true);
-        setText((prev) => (prev !== lastText ? lastText : prev));
-      } else if (visible && !closing) {
+        setState(detail);
+      } else {
         setClosing(true);
+        if (closeTimer.current) window.clearTimeout(closeTimer.current);
         closeTimer.current = window.setTimeout(() => {
-          setVisible(false);
           setClosing(false);
+          setState({ active: false, text: "", charIndex: 0, charLength: 0 });
           closeTimer.current = null;
         }, 250);
       }
-    }, 300);
+    };
 
+    window.addEventListener(EVT, handler);
     return () => {
-      window.clearInterval(id);
+      window.removeEventListener(EVT, handler);
       if (closeTimer.current) window.clearTimeout(closeTimer.current);
     };
-  }, [visible, closing]);
+  }, []);
 
-  if (!visible && !closing) return null;
+  const visible = state.active || closing;
+  if (!visible) return null;
+
+  const { text, charIndex, charLength } = state;
+  const before = text.slice(0, charIndex);
+  const current = charLength > 0 ? text.slice(charIndex, charIndex + charLength) : "";
+  const after = text.slice(charIndex + charLength);
 
   return (
     <div
@@ -79,7 +139,11 @@ export function VoiceActiveIndicator() {
           <span className="voice-indicator__dot" aria-hidden="true" />
           <span className="voice-indicator__label">Frota</span>
         </div>
-        <div className="voice-indicator__text">{text}</div>
+        <div className="voice-indicator__text">
+          <span>{before}</span>
+          {current && <span className="voice-indicator__highlight">{current}</span>}
+          <span>{after}</span>
+        </div>
       </div>
     </div>
   );

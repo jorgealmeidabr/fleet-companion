@@ -1,68 +1,40 @@
-# Indicador "Voz Ativa" na página de Veículos
+# Sincronizar texto do indicador de voz em tempo real
 
-Adicionar um componente flutuante fixo no canto inferior direito da página **Veículos** que aparece somente enquanto o navegador está falando (Web Speech API), exibindo barras animadas + o texto que está sendo falado.
+Hoje o `VoiceActiveIndicator` faz polling de `speechSynthesis.speaking` e exibe um texto estático (capturado no momento do `speak`). Vamos trocar para um modelo orientado a eventos que acompanha palavra-a-palavra a fala atual.
 
-## Comportamento
+## Mudanças
 
-- Posição: `position: fixed; bottom: 24px; right: 24px; z-index: 50`.
-- Visibilidade controlada por polling de `window.speechSynthesis`:
-  - `setInterval` a cada **300ms** verifica `speechSynthesis.speaking`.
-  - Quando passa para `true` → monta com animação `fadeIn`.
-  - Quando passa para `false` → animação `fadeOut` (~250ms) e desmonta.
-- Texto falado: capturado via `SpeechSynthesisUtterance.text` do utterance atual.
-  - Como a Web Speech API não expõe diretamente o utterance ativo, faremos um *light wrap* somente leitura: um `useEffect` faz monkey-patch de `speechSynthesis.speak` para guardar o último `utterance.text` em uma ref/módulo (`window.__lastSpokenText`). Isso não altera nenhuma lógica existente — apenas observa.
-  - O polling lê esse valor enquanto `speaking === true`.
+### 1. `src/components/VoiceActiveIndicator.tsx` (reescrita do hook de captura)
 
-## Visual
+Substituir o monkey-patch atual por um patch que injeta handlers em cada `SpeechSynthesisUtterance` antes de delegar ao `speak` original. Cada utterance terá:
 
-Container:
-- Fundo `#1a1a1a`, borda `1px solid #EF9F27`, `border-radius: 12px`, `padding: 10px 16px`.
-- Sombra suave para destacar do fundo.
-- Layout flex horizontal: [barras] · [bloco de texto].
+- **`onstart`** → dispara um `CustomEvent('voice-indicator-update')` com `{ active: true, text, charIndex: 0, charLength: 0 }`. Componente fica visível e mostra o texto completo em branco.
+- **`onboundary`** → quando `e.name === 'word'` (ou indefinido), lê `e.charIndex` e `e.charLength`. Se `charLength` for 0 (Chrome/Safari às vezes não preenche), faz fallback derivando o tamanho da palavra atual via regex `/^\S+/` aplicada a `text.slice(charIndex)`. Dispara update com a palavra atual destacada.
+- **`onend`** e **`onerror`** → dispara `{ active: false, ... }`. Componente esconde com fadeOut (250ms).
 
-Equalizer (esquerda):
-- 7 barras verticais, `width: 3px`, `border-radius: 2px`, `background: #EF9F27`.
-- Alturas base variando (ex.: 10, 16, 22, 18, 14, 20, 12 px).
-- Animação CSS `voice-bounce` 0.8s `infinite ease-in-out` com `scaleY` entre `1` e `0.3`.
-- `animation-delay` distinto por barra (ex.: 0s, 0.1s, 0.2s, 0.05s, 0.15s, 0.25s, 0.1s) para efeito orgânico.
+Os handlers preservam handlers prévios (chamando `prev?.call(utterance, e)`) para não interferir com lógica existente.
 
-Bloco direito:
-- Linha 1: ponto circular **7px** âmbar piscando (`@keyframes voice-blink`, opacity 1↔0.3, 1s infinite) + texto **"Frota"** em `font-size: 11px`, cor `#EF9F27`.
-- Linha 2: texto sendo falado em `font-size: 12px`, cor `#e0e0e0`, com `max-width` ~280px, `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis`.
+O componente React:
+- Remove o `setInterval` de 300ms.
+- Escuta o `CustomEvent` no `window` e atualiza `useState<{ active, text, charIndex, charLength }>`.
+- Mantém o estado `closing` para a animação de fadeOut existente.
+- Ao renderizar o texto, divide em três spans: `before` (branco), `current` (destacado em âmbar `#EF9F27`), `after` (branco).
 
-## Detalhes técnicos
+### 2. `src/index.css`
 
-**Arquivos a alterar:**
+Adicionar uma única regra junto de `.voice-indicator__text`:
 
-1. `src/index.css` — adicionar:
-   - `@keyframes voice-bounce` (`transform: scaleY(1)` ↔ `scaleY(0.3)`).
-   - `@keyframes voice-blink` (opacity 1 ↔ 0.3).
-   - `@keyframes voice-fade-in` / `voice-fade-out` (opacity + translateY 8px).
-   - Classes utilitárias `.voice-indicator`, `.voice-indicator__bar`, `.voice-indicator__dot`, `.voice-indicator__label`, `.voice-indicator__text` com os estilos descritos.
+```
+.voice-indicator__highlight {
+  color: #EF9F27;
+  font-weight: 600;
+  transition: color 0.1s ease;
+}
+```
 
-2. `src/components/VoiceActiveIndicator.tsx` (novo):
-   - Componente cliente isolado.
-   - `useState<{ visible: boolean; text: string }>`.
-   - `useEffect` que:
-     - Faz monkey-patch único de `speechSynthesis.speak` para registrar `utterance.text` em `(window as any).__lastSpokenText`.
-     - Inicia `setInterval(300ms)`:
-       - Se `speechSynthesis.speaking` e não visível → set `visible=true`, `text = window.__lastSpokenText ?? ""`.
-       - Se não está falando e estava visível → dispara estado `closing` por 250ms (anim fadeOut), depois `visible=false`.
-     - Cleanup: `clearInterval` (não desfaz patch, é idempotente e seguro).
-   - Renderiza `null` quando não visível e não fechando.
-   - Usa as classes do CSS para barras/ponto/texto. Renderiza 7 `<span class="voice-indicator__bar" style={{ animationDelay, height }} />`.
+## Compatibilidade e fora de escopo
 
-3. `src/pages/Veiculos.tsx`:
-   - Importar `VoiceActiveIndicator`.
-   - Renderizar `<VoiceActiveIndicator />` ao final do JSX retornado pela página (irmão do conteúdo principal). Nenhuma outra alteração.
-
-## Acessibilidade
-
-- Container com `role="status"` e `aria-live="polite"` para que leitores de tela anunciem o texto falado uma vez (texto curto, sem ruído).
-- Ponto/barras com `aria-hidden="true"`.
-
-## Fora de escopo
-
-- Não alterar nenhuma chamada existente a `speechSynthesis.speak` na aplicação.
-- Não tocar em outros componentes da topbar, do feed ou da tabela de veículos.
-- Sem bibliotecas externas; apenas CSS + React.
+- O patch de `speechSynthesis.speak` continua idempotente (`patched` global) — não altera nenhuma chamada existente.
+- Handlers prévios definidos pelo chamador são preservados.
+- Sem mudanças em `Veiculos.tsx` nem em qualquer outro consumidor de voz.
+- O texto continua truncado por `text-overflow: ellipsis` na CSS atual; não vamos alterar o layout, apenas a cor da palavra atual.
