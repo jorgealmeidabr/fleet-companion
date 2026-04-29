@@ -89,7 +89,9 @@ export default function Veiculos() {
       .channel("veiculos-agendamentos-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    // Polling a cada 15s para garantir atualização do status
+    const pollId = setInterval(load, 15_000);
+    return () => { supabase.removeChannel(channel); clearInterval(pollId); };
   }, []);
 
   // Deriva status efetivo: agendamento ativo vira "reservado" (futuro) ou "em_uso" (já saiu)
