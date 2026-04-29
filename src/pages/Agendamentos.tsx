@@ -401,19 +401,49 @@ export default function Agendamentos() {
                   {veiculos.length === 0 ? (
                     <p className="text-muted-foreground text-sm">Nenhum veículo cadastrado.</p>
                   ) : selectedDay ? (
-                    veiculos.map(v => {
-                      const ags = ativos.filter(a => a.veiculo_id === v.id);
-                      return (
-                        <div key={v.id} className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="h-2.5 w-2.5 rounded-full" style={{ background: colorByVeiculo[v.id] }} />
-                            <span className="font-mono font-medium">{v.placa}</span>
-                            <span className="text-muted-foreground">{v.marca} {v.modelo}</span>
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        Exibindo reservas de <strong>todos os usuários</strong> para este dia. Use a visão para identificar horários livres.
+                      </p>
+                      {veiculos.map(v => {
+                        const ags = ativos.filter(a => a.veiculo_id === v.id);
+                        const agsNoDia = ags
+                          .filter(a => inRange(selectedDay, a.data_saida, a.data_retorno_prevista))
+                          .sort((a, b) => new Date(a.data_saida).getTime() - new Date(b.data_saida).getTime());
+                        return (
+                          <div key={v.id} className="space-y-1.5 pb-2 border-b border-border/40 last:border-b-0">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ background: colorByVeiculo[v.id] }} />
+                              <span className="font-mono font-medium">{v.placa}</span>
+                              <span className="text-muted-foreground">{v.marca} {v.modelo}</span>
+                              {agsNoDia.length > 0 && (
+                                <Badge variant="secondary" className="ml-auto text-[10px] py-0 h-4">
+                                  {agsNoDia.length} reserva{agsNoDia.length > 1 ? "s" : ""}
+                                </Badge>
+                              )}
+                            </div>
+                            <HourTimeline agendamentos={ags} day={selectedDay} />
+                            {agsNoDia.length > 0 && (
+                              <ul className="space-y-0.5 pl-4 pt-1">
+                                {agsNoDia.map(a => {
+                                  const m = motoristaMap[a.motorista_id];
+                                  const s = new Date(a.data_saida);
+                                  const e = new Date(a.data_retorno_prevista);
+                                  return (
+                                    <li key={a.id} className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                      <span className="font-mono text-foreground">{fmtHHmm(s)}–{fmtHHmm(e)}</span>
+                                      <span>·</span>
+                                      <User className="h-3 w-3" />
+                                      <span className="truncate">{m?.nome ?? "Motorista"}</span>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
                           </div>
-                          <HourTimeline agendamentos={ags} day={selectedDay} />
-                        </div>
-                      );
-                    })
+                        );
+                      })}
+                    </>
                   ) : null}
                 </CardContent>
               </Card>
