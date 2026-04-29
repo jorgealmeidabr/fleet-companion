@@ -397,6 +397,59 @@ export default function Veiculos() {
           onSubmit={(v) => update(editing.id, v)}
         />
       )}
+
+      {/* Feed de eventos fixo (canto inferior direito) */}
+      <div className="fixed bottom-4 right-4 z-40">
+        {feedAberto ? (
+          <div className="w-80 rounded-lg border bg-card shadow-elevated animate-scale-in">
+            <div className="flex items-center justify-between border-b px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Eventos recentes</span>
+              </div>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setFeedAberto(false)}>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="max-h-80 divide-y overflow-auto">
+              {eventos.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-muted-foreground">Sem eventos recentes.</div>
+              ) : (
+                eventos.slice(0, 5).map(e => (
+                  <div key={e.key} className="flex items-center gap-2 px-3 py-2 text-xs">
+                    <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass(e.status)}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold tracking-wider">{e.placa}</span>
+                        <span className="text-muted-foreground">{statusLabel(e.status)}</span>
+                      </div>
+                      {e.status !== "disponivel" && (
+                        <div className="truncate text-muted-foreground">por {e.motorista}</div>
+                      )}
+                    </div>
+                    <span className="tabular-nums text-muted-foreground">{horaHHmm(e.hora)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <Button
+            size="icon"
+            variant="brand"
+            className="relative h-12 w-12 rounded-full shadow-elevated"
+            onClick={() => setFeedAberto(true)}
+            aria-label="Abrir feed de eventos"
+          >
+            <Bell className="h-5 w-5" />
+            {eventos.length > 0 && (
+              <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                {Math.min(eventos.length, 99)}
+              </span>
+            )}
+          </Button>
+        )}
+      </div>
     </>
   );
 }
