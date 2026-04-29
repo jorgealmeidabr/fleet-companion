@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { janelaOcupada } from "@/lib/agendamento";
+import { VoiceActiveIndicator } from "@/components/VoiceActiveIndicator";
 
 
 function LiveStatusPill() {
@@ -419,6 +420,7 @@ export default function Veiculos() {
         />
       )}
 
+      <VoiceActiveIndicator />
     </>
   );
 }
