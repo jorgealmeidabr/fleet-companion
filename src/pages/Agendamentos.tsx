@@ -809,13 +809,19 @@ export default function Agendamentos() {
                 ⚠️ Após a devolução, o checklist pós-uso é obrigatório antes de novas ações.
               </div>
             </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
-            <Button variant="brand" disabled={savingDevolucao || uploadingFoto} onClick={confirmarDevolucao}>
-              {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
+              <Button
+                variant="brand"
+                disabled={savingDevolucao || uploadingFoto || kmInvalido || kmRetorno == null}
+                onClick={confirmarDevolucao}
+              >
+                {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
+              </Button>
+            </DialogFooter>
+            </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>
