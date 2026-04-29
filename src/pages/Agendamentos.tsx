@@ -178,12 +178,11 @@ export default function Agendamentos() {
     [rows]
   );
 
-  // Lista da aba "Ativos": admin vê tudo; usuário comum só vê os próprios.
+  // Lista da aba "Ativos": cada usuário (inclusive admin) vê APENAS os próprios.
   const ativosVisiveis = useMemo(() => {
-    if (isAdmin) return ativos;
     if (!perfil?.motorista_id) return [];
     return ativos.filter(a => a.motorista_id === perfil.motorista_id);
-  }, [ativos, isAdmin, perfil?.motorista_id]);
+  }, [ativos, perfil?.motorista_id]);
 
   const eventosNoDia = useMemo(() => {
     if (!selectedDay) return [];
