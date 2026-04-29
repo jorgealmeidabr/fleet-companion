@@ -517,14 +517,17 @@ export default function Agendamentos() {
         <TabsContent value="ativos">
           <Card className="shadow-card">
             <CardContent className="p-0">
-              {ativos.length === 0 ? (
-                <p className="p-10 text-center text-muted-foreground">Nenhum agendamento ativo.</p>
+              {ativosVisiveis.length === 0 ? (
+                <p className="p-10 text-center text-muted-foreground">
+                  {isAdmin ? "Nenhum agendamento ativo." : "Você não possui agendamentos ativos."}
+                </p>
               ) : (
                 <ul className="divide-y divide-border">
-                  {ativos.map(a => {
+                  {ativosVisiveis.map(a => {
                     const v = veiculoMap[a.veiculo_id];
                     const m = motoristaMap[a.motorista_id];
                     const ehDono = a.motorista_id === perfil?.motorista_id;
+                    const podeAgir = isAdmin || ehDono;
                     const agora = new Date();
                     const jaIniciou = new Date(a.data_saida) <= agora;
                     return (
@@ -548,13 +551,13 @@ export default function Agendamentos() {
                               Iniciar uso
                             </Button>
                           )}
-                          {(isAdmin || ehDono) && (
+                          {podeAgir && (
                             <Button size="sm" variant="brand"
                               onClick={() => { setReturning(a); setRetForm({ km_retorno: veiculoMap[a.veiculo_id]?.km_atual }); }}>
                               <RotateCcw className="mr-1 h-3.5 w-3.5" />Registrar devolução
                             </Button>
                           )}
-                          {ehDono && (
+                          {podeAgir && (
                             <Button size="sm" variant="ghost" onClick={() => cancelar(a)}>Cancelar</Button>
                           )}
                         </div>
