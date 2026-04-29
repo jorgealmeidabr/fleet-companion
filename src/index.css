@@ -224,6 +224,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .voice-indicator__highlight {
+    color: #EF9F27;
+    font-weight: 600;
+    transition: color 0.1s ease;
+  }
 
   @keyframes voice-bounce {
     0%, 100% { transform: scaleY(1); }
