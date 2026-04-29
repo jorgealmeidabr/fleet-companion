@@ -642,15 +642,28 @@ export default function Agendamentos() {
                 onChange={(id) => setForm(s => ({ ...s, motorista_id: id }))}
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Saída *</Label>
-                <Input type="datetime-local" value={form.data_saida ?? ""} onChange={(e) => setForm(s => ({ ...s, data_saida: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Retorno previsto *</Label>
-                <Input type="datetime-local" value={form.data_retorno_prevista ?? ""} onChange={(e) => setForm(s => ({ ...s, data_retorno_prevista: e.target.value }))} />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Saída *</Label>
+              <Input
+                type="datetime-local"
+                value={form.data_saida ?? ""}
+                onChange={(e) => {
+                  const saida = e.target.value;
+                  let fim = "";
+                  if (saida) {
+                    const d = new Date(saida);
+                    if (!isNaN(d.getTime())) {
+                      d.setHours(d.getHours() + 24);
+                      const pad = (n: number) => String(n).padStart(2, "0");
+                      fim = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                    }
+                  }
+                  setForm(s => ({ ...s, data_saida: saida, data_retorno_prevista: fim }));
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                O horário de retorno será registrado automaticamente na devolução do veículo.
+              </p>
             </div>
 
             {/* Timeline visual do dia escolhido */}
