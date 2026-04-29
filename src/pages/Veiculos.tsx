@@ -23,6 +23,16 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { janelaOcupada } from "@/lib/agendamento";
 
 
+function LiveStatusPill() {
+  return (
+    <div className="status-pill" aria-hidden="true">
+      <span className="status-pill__dot" />
+      <span className="status-pill__label">Status da Frota em Tempo Real</span>
+      <span className="status-pill__sweep" />
+    </div>
+  );
+}
+
 const fields: FieldDef[] = [
   { name: "placa", label: "Placa", required: true,
     placeholder: "AAA-0000 ou AAA0A00",
@@ -241,7 +251,6 @@ export default function Veiculos() {
     <>
       <PageHeader
         title="Veículos"
-        subtitle="Estado da frota em tempo real"
         actions={isAdmin && (
           <FormDialog<Veiculo>
             title="Novo veículo" fields={fields} onSubmit={insert}
@@ -249,6 +258,10 @@ export default function Veiculos() {
           />
         )}
       />
+
+      <div className="-mt-4 mb-4">
+        <LiveStatusPill />
+      </div>
 
       <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-4">
         <div className="relative md:col-span-2">
