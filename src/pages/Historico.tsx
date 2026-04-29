@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/lib/supabase";
-import { fmtDate, fmtDateTime, fmtBRL, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtDateTimeShort, fmtBRL, fmtNumber } from "@/lib/format";
 import type { Veiculo, Motorista, Agendamento, Manutencao, Abastecimento, Checklist, Multa } from "@/lib/types";
 import { Wrench, Fuel, ClipboardCheck, CalendarRange, AlertTriangle, Download } from "lucide-react";
 
@@ -271,8 +271,8 @@ export default function Historico() {
                         {usoRows.map((r, i) => (
                           <TableRow key={i}>
                             <TableCell>{r.motorista}</TableCell>
-                            <TableCell className="whitespace-nowrap">{fmtDate(r.saida)}</TableCell>
-                            <TableCell className="whitespace-nowrap">{fmtDate(r.retorno)}</TableCell>
+                            <TableCell className="whitespace-nowrap">{fmtDateTimeShort(r.saida)}</TableCell>
+                            <TableCell className="whitespace-nowrap">{fmtDateTimeShort(r.retorno)}</TableCell>
                             <TableCell>{r.destino}</TableCell>
                             <TableCell className="text-right">{r.kmRodado != null ? fmtNumber(r.kmRodado) : "—"}</TableCell>
                             <TableCell>{r.status}</TableCell>
