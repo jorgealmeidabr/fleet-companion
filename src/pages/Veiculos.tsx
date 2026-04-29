@@ -94,6 +94,71 @@ export default function Veiculos() {
     return () => { supabase.removeChannel(channel); clearInterval(pollId); };
   }, []);
 
+  // Eventos recentes para ticker e feed (independente, polling 15s)
+  type Evento = {
+    key: string;
+    veiculoId: string;
+    placa: string;
+    motorista: string;
+    status: "reservado" | "em_uso" | "disponivel";
+    hora: string;
+  };
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [feedAberto, setFeedAberto] = useState(false);
+  useEffect(() => {
+    const placaPorId = new Map(rows.map(r => [r.id, r.placa] as const));
+    const loadEventos = async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id,veiculo_id,motorista_id,data_saida,data_retorno_real,status")
+        .in("status", ["ativo", "concluido"])
+        .order("data_saida", { ascending: false })
+        .limit(20);
+      const ags = (data ?? []) as Array<{ id: string; veiculo_id: string; motorista_id: string; data_saida: string; data_retorno_real: string | null; status: string }>;
+      const mids = Array.from(new Set(ags.map(a => a.motorista_id).filter(Boolean)));
+      let nomes: Record<string, string> = {};
+      if (mids.length) {
+        const { data: ms } = await supabase.from("motoristas").select("id,nome").in("id", mids);
+        nomes = Object.fromEntries(((ms ?? []) as Array<{ id: string; nome: string }>).map(m => [m.id, m.nome]));
+      }
+      const agora = Date.now();
+      const lista: Evento[] = ags.map(a => {
+        let status: Evento["status"];
+        let hora: string;
+        if (a.status === "concluido") {
+          status = "disponivel";
+          hora = a.data_retorno_real ?? a.data_saida;
+        } else if (new Date(a.data_saida).getTime() <= agora) {
+          status = "em_uso";
+          hora = a.data_saida;
+        } else {
+          status = "reservado";
+          hora = a.data_saida;
+        }
+        return {
+          key: `${a.id}-${status}`,
+          veiculoId: a.veiculo_id,
+          placa: placaPorId.get(a.veiculo_id) ?? "—",
+          motorista: nomes[a.motorista_id] ?? "—",
+          status,
+          hora,
+        };
+      });
+      lista.sort((a, b) => b.hora.localeCompare(a.hora));
+      setEventos(lista.slice(0, 10));
+    };
+    loadEventos();
+    const id = setInterval(loadEventos, 15_000);
+    return () => clearInterval(id);
+  }, [rows]);
+
+  const statusLabel = (s: Evento["status"]) =>
+    s === "reservado" ? "Reservado" : s === "em_uso" ? "Em uso" : "Disponível";
+  const statusDotClass = (s: Evento["status"]) =>
+    s === "disponivel" ? "bg-success" : s === "reservado" ? "bg-warning" : "bg-info";
+  const horaHHmm = (iso: string) =>
+    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
   // Deriva status efetivo: agendamento ativo vira "reservado" (futuro) ou "em_uso" (já saiu)
   const rowsEfetivos = useMemo<Veiculo[]>(() => rows.map(v => {
     if (v.status === "manutencao" || v.status === "inativo") return v;
