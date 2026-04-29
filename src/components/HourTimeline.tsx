@@ -100,7 +100,10 @@ export function suggestFreeSlots(
 
   const ocupados = agendamentos
     .filter(a => a.status !== "cancelado" && a.status !== "concluido")
-    .map(a => ({ s: new Date(a.data_saida), e: new Date(a.data_retorno_prevista) }))
+    .map(a => {
+      const { inicio, fim } = janelaOcupada(a);
+      return { s: inicio, e: fim };
+    })
     .filter(o => o.e > dayStart && o.s < dayEnd)
     .sort((a, b) => a.s.getTime() - b.s.getTime());
 
