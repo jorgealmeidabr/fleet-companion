@@ -243,6 +243,25 @@ export default function Veiculos() {
                   <span className="capitalize">{v.tipo} · {v.combustivel}</span>
                   <span className="font-semibold text-foreground">{fmtNumber(v.km_atual)} km</span>
                 </div>
+                {(() => {
+                  const info = agendamentosAtivos.get(v.id);
+                  if (!info) return null;
+                  if (v.status === "reservado") {
+                    return (
+                      <div className="text-xs text-muted-foreground">
+                        Reservado para <span className="font-medium text-foreground">{info.motoristaNome}</span> · {formatHHmm(info.dataSaida)}
+                      </div>
+                    );
+                  }
+                  if (v.status === ("em_uso" as Veiculo["status"])) {
+                    return (
+                      <div className="text-xs text-muted-foreground">
+                        Em uso por <span className="font-medium text-foreground">{info.motoristaNome}</span> · há {formatDuracao(info.dataSaida, now)}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </CardContent>
             </Card>
           ))}
