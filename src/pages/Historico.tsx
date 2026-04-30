@@ -153,7 +153,7 @@ export default function Historico() {
 
   return (
     <>
-      <PageHeader title="Histórico" subtitle="Linha do tempo completa por veículo" />
+      <PageHeader title="Histórico" subtitle="Histórico Operacional por Veículo" />
 
       <Card className="mb-4 shadow-card">
         <CardContent className="p-4">
