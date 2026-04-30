@@ -160,7 +160,7 @@ export default function Usuarios() {
     <>
       <PageHeader
         title="Usuários"
-        subtitle="Gerencie quem acessa o sistema e o que cada pessoa pode ver"
+        subtitle="Gestão de Usuários e Permissões"
         actions={
           <Button variant="brand" onClick={() => { setEditing(null); setOpenModal(true); }}>
             <Plus className="mr-1 h-4 w-4" />Novo usuário
