@@ -1,53 +1,106 @@
-## Objetivo
 
-Permitir que admins marquem um veículo como "Uso restrito" e selecionem quais usuários podem reservá-lo. Nas telas de agendamento (calendário e novo agendamento), o frontend filtra: se o veículo é restrito, só aparece para usuários liberados. Admins veem tudo.
+# Módulo "Acidentes"
 
-## Importante sobre persistência
+Novo item de menu na seção **Execução** com fluxos distintos para Motorista e Admin, persistência via Supabase, notificação no sino e relatório formal imprimível.
 
-O pedido é para criar a tabela `vehicle_allowed_users` "implicitamente via upsert", **sem migração SQL e sem RLS**. Isso **não funciona com Supabase/Postgres** — o PostgREST só expõe tabelas que já existem no schema, e a tentativa de insert vai retornar erro "relation does not exist". Além disso, a coluna `restricted` em `veiculos` também não existe e não pode ser criada sem migração.
+## 1. Banco de dados (Supabase)
 
-Para entregar o efeito sem nenhuma alteração de banco, vou usar **localStorage** como armazenamento (chave por veículo). Fica claramente apenas-cliente: configurado num navegador, lido por todos os usuários no mesmo dispositivo. É a única forma fiel à restrição "sem migração e sem RLS".
+Novo arquivo `supabase_setup/16_migration_v9_acidentes.sql` com instruções para o usuário rodar no SQL Editor. Conteúdo:
 
-Se você prefere persistência real e multi-dispositivo, me avise e eu adiciono uma migração mínima criando a tabela + a coluna + RLS adequada — é o caminho recomendado.
+- **Tabela `acidentes`**: `id uuid pk`, `protocolo text unique`, `user_id uuid → auth.users`, `motorista_nome text`, `veiculo_id uuid → veiculos`, `data_hora timestamptz`, `local text`, `descricao text`, `tipo text` (`colisao|atropelamento|capotamento|outro`), `culpa text` (`funcionario|terceiro|falha_mecanica|desconhecido`), `numero_bo text null`, `fotos_urls text[]`, `status text default 'pendente'` (`pendente|em_analise|encerrado`), `created_at timestamptz`.
+- **Tabela `acidentes_contatos`**: `id`, `nome`, `cargo`, `telefone`, `whatsapp`, `ordem int`, `created_at`. Seed com 3 placeholders (RH, Gestor de Frota, Diretoria).
+- **Bucket de storage `acidentes`** (público) para fotos.
+- **RLS**:
+  - `acidentes`: motorista insere/seleciona apenas as próprias (`user_id = auth.uid()`); admin tudo (`is_admin_perfil`). Apenas admin faz `update` (mudar status).
+  - `acidentes_contatos`: select para todos autenticados; insert/update/delete só admin.
+- Novo módulo de permissão `"acidentes"` (default true para usuário, true para admin).
 
-## Mudanças
+## 2. Tipos e permissões
 
-### 1. `src/lib/vehicleAccess.ts` (novo)
-Helper com:
-- `getRestriction(vehicleId): { restricted: boolean; allowedUserIds: string[] }`
-- `setRestriction(vehicleId, value)`
-- `getAllRestrictions(): Record<vehicleId, ...>`
-- `canUserUseVehicle(vehicleId, userId, isAdmin): boolean` — admin sempre true; sem restrição → true; com restrição → checa lista.
+- `src/lib/types.ts`: adicionar `"acidentes"` em `ModuloPermissao`, atualizar `PERMISSOES_DEFAULT` e `PERMISSOES_TUDO`, adicionar interfaces `Acidente`, `AcidenteContato`, e mapping em `Database.Tables`.
+- `src/hooks/usePermissions.ts`: incluir `acidentes: true` no fallback (admin e motorista).
 
-Armazena em `localStorage` sob a chave `vehicle_access_v1` como objeto `{ [vehicleId]: { restricted, allowedUserIds } }`. Emite um `window` CustomEvent `vehicle-access-changed` para hooks reagirem.
+## 3. Sidebar e rotas
 
-### 2. `src/hooks/useVehicleAccess.ts` (novo)
-Hook que retorna o mapa de restrições e re-renderiza ao ouvir o evento + `storage`. Expõe `filterAllowed(vehiculos, userId, isAdmin)`.
+- `src/components/AppLayout.tsx`: adicionar item `{ title: "Acidentes", url: "/acidentes", icon: AlertOctagon, perm: "acidentes" }` na seção **Execução**.
+- `src/App.tsx`: adicionar rotas `/acidentes` (`AcidentesIndex`) e `/acidentes/:id` (admin — `AcidenteDetalhe`).
 
-### 3. `src/pages/VeiculoDetalhe.tsx`
-Adicionar (somente para `isAdmin`) um card "Uso restrito":
-- `Switch` "Uso restrito" (componente já existe em `ui/switch`).
-- Quando ligado: lista de usuários (`usuarios_perfis` + nome do `motoristas` via join client-side, tipo_conta = "usuario", ativo) com `Checkbox` por linha.
-- Botão "Salvar" → chama `setRestriction(veiculo.id, { restricted, allowedUserIds })`.
-- Toast de confirmação. Estado local inicializado a partir de `getRestriction`.
+## 4. Página `/acidentes` — roteamento por perfil
 
-### 4. `src/pages/Agendamentos.tsx`
-- Na inicialização, obter `perfil.user_id` do `useAuth`.
-- Aplicar `filterAllowed` em:
-  - `veiculos` exibidos no grid de "Novo Agendamento" (linhas que renderizam cards selecionáveis).
-  - Lista de veículos da timeline horária no Calendário (loop sobre `veiculos`).
-- Admin: passa `isAdmin=true` → vê todos.
+`src/pages/Acidentes.tsx` decide via `usePermissions().isAdmin`:
+- Admin → `<AcidentesAdminList />`
+- Demais → `<AcidentesUsuario />`
 
-### 5. (Opcional, mesma sessão) Indicador visual
-Em `VeiculoDetalhe` admin, mostrar badge "Restrito" no card do veículo quando `restricted=true`. (Não pedido em outras telas, então não tocar `Veiculos.tsx`.)
+## 5. Fluxo Usuário — `src/pages/AcidentesUsuario.tsx`
+
+Componente único com seções verticais:
+
+1. **Banner emergência** — `bg-destructive` full-width, texto + 3 botões `<a href="tel:192|193|190">` com ícones Lucide (`Ambulance`, `Flame`, `Shield`).
+2. **Checklist 5 passos** — `useState<boolean[]>` local; cada card numerado com `Checkbox`, número grande estilo brand (amarelo). Visual de "concluído" com strikethrough.
+3. **Contatos da empresa** — query em `acidentes_contatos`. Cards com nome/cargo/telefone + botões `tel:` e `https://wa.me/<num>`. Sem edição aqui (admin edita em outra UI; ver §6).
+4. **Formulário de registro** — `react-hook-form` + zod (padrão do projeto). Campos:
+   - Veículo (Select dos `veiculos` da frota)
+   - Nome do motorista (preenchido auto: `perfil.motorista?.nome` via fetch ou `user.email` como fallback) — readonly
+   - Data e hora (input `datetime-local`, default agora)
+   - Local
+   - Descrição (Textarea)
+   - Tipo (Select)
+   - Culpa (Select)
+   - Nº B.O. (opcional)
+   - Upload de fotos (múltiplas) usando `uploadFiles("acidentes" as any, files)` — adicionar `"acidentes"` ao tipo `Bucket` em `src/lib/storage.ts`.
+   - Botão "Enviar ocorrência": gera `protocolo` (`AC-yyyymmdd-xxxx`), insere em `acidentes` com `status: "pendente"`, exibe toast + tela de confirmação inline com protocolo.
+5. **Acordeão Responsabilidade Legal** — `Accordion` com 2 itens explicativos (Empresa paga / Funcionário paga) com textos legais resumidos.
+
+## 6. Fluxo Admin
+
+### `src/pages/AcidentesAdminList.tsx`
+- `DataTable` com colunas: Data, Motorista, Veículo (placa), Tipo, Status (`StatusBadge`), Ações.
+- Filtros: `Select` status (todos/pendente/em_analise/encerrado) e `Input` período (de/até).
+- Botão "Ver detalhes" → `navigate(/acidentes/${id})`.
+- Botão "Gerenciar contatos" abre `Dialog` com CRUD de `acidentes_contatos`.
+
+### `src/pages/AcidenteDetalhe.tsx`
+- Carrega ocorrência por id + dados do veículo.
+- Seções: Dados do motorista, Veículo, Data/Local, Descrição, Tipo/Culpa, Nº B.O., Galeria de fotos (grid clicável → lightbox simples).
+- `Select` para alterar status (update no Supabase + toast).
+- Botão **"Imprimir documento formal"** → `window.print()`.
+- Layout do relatório imprimível (renderizado dentro da página, escondido em tela e visível em print):
+  - Container com classe `print-only` + global CSS `@media print { .no-print { display:none !important } body { background:white } }` adicionado em `src/index.css`.
+  - Conteúdo: logo BRQ (`@/assets/brq-logo-app.jpg`), título "Relatório de Ocorrência de Acidente", protocolo, todas as informações em seções, dois campos de assinatura (motorista e responsável), data de geração.
+  - Sidebar/header já são ocultos via classe `no-print` aplicada no `header` e `Sidebar` do `AppLayout` (adicionar essa classe).
+
+## 7. Notificação no sino
+
+- Novo hook `src/hooks/useAcidentesNotif.ts`: para admins, faz `select count(*)` em `acidentes` com `status = 'pendente'` (poll a cada 60s + Supabase realtime channel em `INSERT`).
+- `useAlerts` integração: gerar `AlertItem` "Nova ocorrência registrada — [motorista], [placa]" para cada acidente pendente, com `link: /acidentes/${id}`. Isso já alimenta o badge do sino existente em `/alertas`.
+- Ajuste em `useAlerts.ts`: incluir fetch da tabela `acidentes` e gerar alertas `level: "atencao"` para os admins.
+
+## 8. Memória
+
+Salvar `mem://features/acidentes` resumindo: tabelas, status flow, bucket de storage, perfis e endpoint de print.
 
 ## Detalhes técnicos
 
-- `usuarios_perfis` tem `user_id` e `motorista_id`; carregar nomes via `motoristas.in("id", motoristaIds)`.
-- `filterAllowed` recebe `veiculos: Veiculo[]` e devolve filtrado; aplicar antes dos `useMemo` de `colorByVeiculo`/grids para que a UI inteira respeite a permissão.
-- Conflitos / janelas continuam funcionando normalmente — só some o card pra quem não está liberado.
-- Nenhuma chamada Supabase nova; nenhuma migração; nenhum schema novo.
+- Componentes shadcn já existentes: `Card`, `Accordion`, `Dialog`, `Select`, `Textarea`, `Checkbox`, `Switch`, `Badge`, `Button`, `DataTable`.
+- Ícones Lucide: `AlertOctagon`, `Ambulance`, `Flame`, `Shield`, `Phone`, `MessageCircle`, `Printer`.
+- Cores: usar tokens existentes (`bg-destructive`, `bg-warning`, `text-warning-foreground`) — paleta amarelo/preto BRQ já definida.
+- Upload: estender `Bucket` em `src/lib/storage.ts` para incluir `"acidentes"`.
+- Migração SQL **não roda automaticamente** — usuário precisa colar o conteúdo do arquivo `16_migration_v9_acidentes.sql` no SQL Editor do Supabase (mesmo padrão da v8). O código fica preparado para funcionar assim que a migração rodar.
 
-## Limitação (precisa confirmar)
+## Arquivos a criar
+- `supabase_setup/16_migration_v9_acidentes.sql`
+- `src/pages/Acidentes.tsx` (router por perfil)
+- `src/pages/AcidentesUsuario.tsx`
+- `src/pages/AcidentesAdminList.tsx`
+- `src/pages/AcidenteDetalhe.tsx`
+- `src/hooks/useAcidentesNotif.ts`
+- `mem://features/acidentes` + atualização do `mem://index.md`
 
-A configuração mora em `localStorage` do navegador do admin. Outros dispositivos não veem a restrição. Se aceitável, prossigo. Se não, recomendo trocar para uma migração SQL real.
+## Arquivos a editar
+- `src/lib/types.ts` (módulo `acidentes`, interfaces, Database)
+- `src/lib/storage.ts` (bucket `acidentes`)
+- `src/hooks/usePermissions.ts` (fallback)
+- `src/hooks/useAlerts.ts` (alerta de nova ocorrência)
+- `src/components/AppLayout.tsx` (item de menu + classe `no-print`)
+- `src/App.tsx` (rotas)
+- `src/index.css` (regras `@media print`)

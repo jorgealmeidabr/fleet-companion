@@ -17,7 +17,7 @@ export type TipoConta = "admin" | "usuario";
 export type ModuloPermissao =
   | "dashboard" | "veiculos" | "motoristas" | "manutencao" | "abastecimento"
   | "agendamentos" | "checklists" | "multas" | "alertas" | "historico"
-  | "usuarios" | "financeiro" | "solicitacoes";
+  | "usuarios" | "financeiro" | "solicitacoes" | "acidentes";
 
 export type Permissoes = Record<ModuloPermissao, boolean>;
 
@@ -25,15 +25,46 @@ export const PERMISSOES_DEFAULT: Permissoes = {
   dashboard: false, veiculos: false, motoristas: false, manutencao: false,
   abastecimento: false, agendamentos: true, checklists: true, multas: false,
   alertas: false, historico: false, usuarios: false, financeiro: false,
-  solicitacoes: true,
+  solicitacoes: true, acidentes: true,
 };
 
 export const PERMISSOES_TUDO: Permissoes = {
   dashboard: true, veiculos: true, motoristas: true, manutencao: true,
   abastecimento: true, agendamentos: true, checklists: true, multas: true,
   alertas: true, historico: true, usuarios: true, financeiro: true,
-  solicitacoes: true,
+  solicitacoes: true, acidentes: true,
 };
+
+export type AcidenteTipo = "colisao" | "atropelamento" | "capotamento" | "outro";
+export type AcidenteCulpa = "funcionario" | "terceiro" | "falha_mecanica" | "desconhecido";
+export type AcidenteStatus = "pendente" | "em_analise" | "encerrado";
+
+export interface Acidente {
+  id: string;
+  protocolo: string;
+  user_id: string;
+  motorista_nome: string;
+  veiculo_id: string | null;
+  data_hora: string;
+  local: string;
+  descricao: string;
+  tipo: AcidenteTipo;
+  culpa: AcidenteCulpa;
+  numero_bo: string | null;
+  fotos_urls: string[];
+  status: AcidenteStatus;
+  created_at: string;
+}
+
+export interface AcidenteContato {
+  id: string;
+  nome: string;
+  cargo: string;
+  telefone: string;
+  whatsapp: string | null;
+  ordem: number;
+  created_at: string;
+}
 
 export interface Veiculo { id: string; placa: string; modelo: string; marca: string; ano: number; tipo: VeiculoTipo; combustivel: VeiculoCombustivel; km_atual: number; status: VeiculoStatus; foto_url: string | null; created_at: string; }
 export interface Motorista { id: string; nome: string; cnh_numero: string; cnh_categoria: string; cnh_validade: string; telefone: string | null; email: string | null; cargo: string | null; status: MotoristaStatus; foto_url: string | null; user_id: string | null; created_at: string; }
@@ -72,6 +103,8 @@ export type Database = {
       agendamentos: { Row: Agendamento; Insert: Partial<Agendamento>; Update: Partial<Agendamento> };
       multas: { Row: Multa; Insert: Partial<Multa>; Update: Partial<Multa> };
       requests: { Row: Request; Insert: Partial<Request>; Update: Partial<Request> };
+      acidentes: { Row: Acidente; Insert: Partial<Acidente>; Update: Partial<Acidente> };
+      acidentes_contatos: { Row: AcidenteContato; Insert: Partial<AcidenteContato>; Update: Partial<AcidenteContato> };
       profiles: { Row: { id: string; nome: string | null; email: string | null; cargo_pretendido: string | null; status: "pendente" | "ativo" | "rejeitado"; created_at: string }; Insert: any; Update: any };
       user_roles: { Row: { id: string; user_id: string; role: AppRole }; Insert: any; Update: any };
       usuarios_perfis: { Row: UsuarioPerfil; Insert: Partial<UsuarioPerfil>; Update: Partial<UsuarioPerfil> };
