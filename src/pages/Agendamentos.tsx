@@ -366,7 +366,7 @@ export default function Agendamentos() {
 
   return (
     <>
-      <PageHeader title="Agendamentos" subtitle="Reserve veículos por horário — sem mais bloqueio por status" />
+      <PageHeader title="Agendamentos" subtitle="Reserva Temporal com Controle de Disponibilidade e Conflitos" />
 
       <Tabs defaultValue="calendario" className="space-y-4">
         <TabsList>
