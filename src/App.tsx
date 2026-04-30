@@ -28,6 +28,8 @@ import Alertas from "./pages/Alertas";
 import Usuarios from "./pages/Usuarios";
 import MeuPerfil from "./pages/MeuPerfil";
 import Solicitacoes from "./pages/Solicitacoes";
+import Acidentes from "./pages/Acidentes";
+import AcidenteDetalhe from "./pages/AcidenteDetalhe";
 import NotFound from "./pages/NotFound";
 import type { ModuloPermissao } from "@/lib/types";
 
@@ -65,6 +67,8 @@ const App = () => (
             <Route path="/historico" element={<Protected perm="historico"><Historico /></Protected>} />
             <Route path="/alertas" element={<Protected perm="alertas"><Alertas /></Protected>} />
             <Route path="/solicitacoes" element={<Protected perm="solicitacoes"><Solicitacoes /></Protected>} />
+            <Route path="/acidentes" element={<Protected perm="acidentes"><Acidentes /></Protected>} />
+            <Route path="/acidentes/:id" element={<Protected admin><AcidenteDetalhe /></Protected>} />
             <Route path="/usuarios" element={<Protected admin><Usuarios /></Protected>} />
             <Route path="/meu-perfil" element={<ProtectedRoute><AppLayout><MeuPerfil /></AppLayout></ProtectedRoute>} />
 
