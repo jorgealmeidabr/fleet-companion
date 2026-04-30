@@ -120,10 +120,10 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
                           {showBadge && (
                             <Badge variant={badgeVariant} className={cn(
                               "h-5 min-w-[20px] justify-center px-1.5 text-[10px]",
-                              item.url === "/solicitacoes" && "bg-info text-info-foreground hover:bg-info",
+                              item.url === "/solicitacoes" && "bg-info text-info-foreground hover:bg-info opacity-0",
                               collapsed && "absolute right-0 top-0 -translate-y-1 translate-x-1",
                             )}>
-                              {badgeValue}
+                              {item.url === "/solicitacoes" ? "​" : badgeValue}
                             </Badge>
                           )}
                         </NavLink>
