@@ -157,7 +157,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="Visão geral da frota BRQ em tempo real" />
+      <PageHeader title="Dashboard" subtitle="Painel de Eficiência e Disponibilidade da Frota" />
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Disponíveis" value={disponiveis} icon={Car} tone="success" hint={`${veiculos.length} veículos no total`} />
