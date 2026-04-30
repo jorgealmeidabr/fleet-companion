@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { fmtDateTime } from "@/lib/format";
 import type { Acidente, Veiculo, AcidenteContato, AcidenteStatus } from "@/lib/types";
-import { Eye, Settings, Plus, Trash2, Users } from "lucide-react";
+import { Eye, Settings, Plus, Trash2, Users, AlertOctagon } from "lucide-react";
 
 const TIPO_LABEL: Record<string, string> = {
   colisao: "Colisão",
@@ -102,7 +102,7 @@ export default function AcidentesAdminList() {
           {loading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">Carregando…</div>
           ) : filtrados.length === 0 ? (
-            <EmptyState title="Sem ocorrências" description="Nenhum acidente registrado para os filtros atuais." />
+            <EmptyState icon={AlertOctagon} title="Sem ocorrências" description="Nenhum acidente registrado para os filtros atuais." />
           ) : (
             <Table>
               <TableHeader>
