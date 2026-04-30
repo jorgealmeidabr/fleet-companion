@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useDismissedAlerts } from "@/hooks/useDismissedAlerts";
-import type { Veiculo, Motorista, Manutencao, Checklist, Multa, Abastecimento } from "@/lib/types";
+import type { Veiculo, Motorista, Manutencao, Checklist, Multa, Abastecimento, Acidente } from "@/lib/types";
 
 export type AlertLevel = "critico" | "atencao" | "info";
 
@@ -28,17 +28,19 @@ export function useAlerts() {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [multas, setMultas] = useState<Multa[]>([]);
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
+  const [acidentes, setAcidentes] = useState<Acidente[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = async () => {
     setLoading(true);
-    const [v, mt, mn, ck, mu, ab] = await Promise.all([
+    const [v, mt, mn, ck, mu, ab, ac] = await Promise.all([
       supabase.from("veiculos").select("*"),
       supabase.from("motoristas").select("*"),
       supabase.from("manutencoes").select("*"),
       supabase.from("checklists").select("*"),
       supabase.from("multas").select("*"),
       supabase.from("abastecimentos").select("*"),
+      (supabase as any).from("acidentes").select("*").eq("status", "pendente"),
     ]);
     setVeiculos((v.data ?? []) as Veiculo[]);
     setMotoristas((mt.data ?? []) as Motorista[]);
@@ -46,6 +48,7 @@ export function useAlerts() {
     setChecklists((ck.data ?? []) as Checklist[]);
     setMultas((mu.data ?? []) as Multa[]);
     setAbastecimentos((ab.data ?? []) as Abastecimento[]);
+    setAcidentes((ac?.data ?? []) as Acidente[]);
     setLoading(false);
   };
 
@@ -146,11 +149,23 @@ export function useAlerts() {
       }
     });
 
+    // Acidentes pendentes (notificação para admins, motoristas só veem seus próprios via RLS)
+    acidentes.forEach(ac => {
+      const v = veiculos.find(x => x.id === ac.veiculo_id);
+      out.push({
+        id: `ac-${ac.id}`, level: "atencao", tipo: "Acidente",
+        titulo: `Nova ocorrência registrada — ${ac.motorista_nome}, ${v?.placa ?? "veículo"}`,
+        descricao: `Protocolo ${ac.protocolo} • ${new Date(ac.data_hora).toLocaleString("pt-BR")}`,
+        veiculoId: ac.veiculo_id ?? undefined,
+        link: `/acidentes/${ac.id}`,
+      });
+    });
+
     const order: Record<AlertLevel, number> = { critico: 0, atencao: 1, info: 2 };
     return out
       .filter(a => !isDismissed(a.id))
       .sort((a, b) => order[a.level] - order[b.level]);
-  }, [veiculos, motoristas, manutencoes, checklists, multas, abastecimentos, isDismissed]);
+  }, [veiculos, motoristas, manutencoes, checklists, multas, abastecimentos, acidentes, isDismissed]);
 
   const counts = useMemo(() => ({
     total: alerts.length,
