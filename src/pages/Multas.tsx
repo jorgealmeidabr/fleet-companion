@@ -80,7 +80,7 @@ export default function Multas() {
 
   return (
     <>
-      <PageHeader title="Multas" subtitle="Controle de infrações e pagamentos"
+      <PageHeader title="Multas" subtitle="Gestão de Infrações e Pagamentos"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={filtered.length === 0 || !canSeeFinancial()} title={!canSeeFinancial() ? "Sem permissão para exportar valores" : ""}
