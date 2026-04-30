@@ -16,13 +16,13 @@ export function usePermissions() {
         dashboard: true, veiculos: true, motoristas: true, manutencao: true,
         abastecimento: true, agendamentos: true, checklists: true, multas: true,
         alertas: true, historico: true, usuarios: true, financeiro: true,
-        solicitacoes: true,
+        solicitacoes: true, acidentes: true,
       }
     : {
         dashboard: false, veiculos: false, motoristas: false, manutencao: false,
         abastecimento: false, agendamentos: true, checklists: true, multas: false,
         alertas: false, historico: false, usuarios: false, financeiro: false,
-        solicitacoes: true,
+        solicitacoes: true, acidentes: true,
       };
 
   const p: Permissoes = permissoes ?? fallback;

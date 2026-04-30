@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-export type Bucket = "veiculos" | "motoristas" | "checklists";
+export type Bucket = "veiculos" | "motoristas" | "checklists" | "acidentes";
 
 export async function uploadFile(bucket: Bucket, file: File): Promise<string> {
   const ext = file.name.split(".").pop() ?? "jpg";

@@ -29,6 +29,9 @@ const map: Record<string, { label: string; className: string }> = {
   requested:    { label: "Solicitado",   className: "bg-info/15 text-info border-info/20" },
   pending:      { label: "Pendente",     className: "bg-warning/15 text-warning border-warning/20" },
   completed:    { label: "Concluído",    className: "bg-success/15 text-success border-success/20" },
+  // acidentes
+  em_analise:   { label: "Em análise",   className: "bg-info/15 text-info border-info/20" },
+  encerrado:    { label: "Encerrado",    className: "bg-success/15 text-success border-success/20" },
 };
 
 type AnyStatus = VeiculoStatus | MotoristaStatus | ManutencaoStatus | AgendamentoStatus | MultaStatus | ChecklistStatus | string;

@@ -247,3 +247,10 @@
     to   { opacity: 0; transform: translateY(8px); }
   }
 }
+
+@media print {
+  .no-print { display: none !important; }
+  body, html { background: white !important; }
+  .print-area { box-shadow: none !important; border: none !important; }
+  @page { margin: 18mm; }
+}

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Car, Users, Wrench, Fuel, CalendarRange, ClipboardCheck, AlertTriangle, History, LogOut, Moon, Sun, Bell, ShieldCheck, UserCircle2, FileText } from "lucide-react";
+import { LayoutDashboard, Car, Users, Wrench, Fuel, CalendarRange, ClipboardCheck, AlertTriangle, History, LogOut, Moon, Sun, Bell, ShieldCheck, UserCircle2, FileText, AlertOctagon } from "lucide-react";
 import brqLogo from "@/assets/brq-logo-app.jpg";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -60,6 +60,7 @@ const groups: NavGroup[] = [
     items: [
       { title: "Agendamentos", url: "/agendamentos", icon: CalendarRange,  perm: "agendamentos" },
       { title: "Checklists",   url: "/checklists",   icon: ClipboardCheck, perm: "checklists" },
+      { title: "Acidentes",    url: "/acidentes",    icon: AlertOctagon,   perm: "acidentes" },
     ],
   },
   {
@@ -83,7 +84,7 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
     .filter(g => g.items.length > 0);
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border no-print">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white shadow-elevated">
@@ -164,7 +165,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar alertCount={alertCount} requestCount={requestCount} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border bg-background/80 px-3 py-1 backdrop-blur">
+          <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border bg-background/80 px-3 py-1 backdrop-blur no-print">
             <SidebarTrigger />
             <div aria-hidden="true" className="mx-2" style={{ width: "1px", height: "28px", backgroundColor: "#2a2a2a" }} />
             <TopbarClock />
@@ -185,7 +186,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 p-4 md:p-6">
-            <Breadcrumbs />
+            <div className="no-print"><Breadcrumbs /></div>
             {children}
           </main>
         </div>
