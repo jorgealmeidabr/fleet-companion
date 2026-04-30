@@ -412,14 +412,14 @@ export default function Agendamentos() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {veiculos.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Nenhum veículo cadastrado.</p>
+                  {veiculosVisiveis.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Nenhum veículo disponível para você.</p>
                   ) : selectedDay ? (
                     <>
                       <p className="text-xs text-muted-foreground">
                         Exibindo reservas de <strong>todos os usuários</strong> para este dia. Use a visão para identificar horários livres.
                       </p>
-                      {veiculos.map(v => {
+                      {veiculosVisiveis.map(v => {
                         const ags = ativos.filter(a => a.veiculo_id === v.id);
                         const agsNoDia = ags
                           .filter(a => inRange(selectedDay, a.data_saida, a.data_retorno_prevista))
