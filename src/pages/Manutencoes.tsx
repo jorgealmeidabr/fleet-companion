@@ -81,7 +81,7 @@ export default function Manutencoes() {
     <>
       <PageHeader
         title="Manutenções"
-        subtitle="Histórico, custos e próximas revisões"
+        subtitle="Registro de Manutenções, Custos e Próximas Intervenções"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={filtered.length === 0 || !canSeeFinancial()} title={!canSeeFinancial() ? "Sem permissão para exportar valores" : ""}
