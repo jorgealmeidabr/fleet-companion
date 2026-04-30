@@ -55,11 +55,12 @@ const toDatetimeLocal = (d: Date) => {
 
 export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
-  const { isAdmin, perfil = null } = useAuth();
+  const { isAdmin, perfil = null, user } = useAuth();
   const { toast } = useToast();
   const { pendentes: checklistPendentes } = useChecklistPendente();
   const temPendencia = !isAdmin && checklistPendentes.length > 0;
   const navigate = useNavigate();
+  const { filterAllowed } = useVehicleAccess();
 
   // Toca 3 bipes curtos via WebAudio + mensagem de voz (TTS)
   const playReturnBeeps = () => {
