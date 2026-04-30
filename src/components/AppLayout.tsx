@@ -165,7 +165,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar alertCount={alertCount} requestCount={requestCount} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border bg-background/80 px-3 py-1 backdrop-blur">
+          <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border bg-background/80 px-3 py-1 backdrop-blur no-print">
             <SidebarTrigger />
             <div aria-hidden="true" className="mx-2" style={{ width: "1px", height: "28px", backgroundColor: "#2a2a2a" }} />
             <TopbarClock />
@@ -186,7 +186,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 p-4 md:p-6">
-            <Breadcrumbs />
+            <div className="no-print"><Breadcrumbs /></div>
             {children}
           </main>
         </div>
