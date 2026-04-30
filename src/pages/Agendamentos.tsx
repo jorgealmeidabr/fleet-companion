@@ -168,6 +168,10 @@ export default function Agendamentos() {
   // Mapas auxiliares
   const veiculoMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
   const motoristaMap = useMemo(() => Object.fromEntries(motoristas.map(m => [m.id, m])), [motoristas]);
+  const veiculosVisiveis = useMemo(
+    () => filterAllowed(veiculos, user?.id ?? null, isAdmin),
+    [veiculos, user?.id, isAdmin, filterAllowed],
+  );
   const colorByVeiculo = useMemo(() => {
     const m: Record<string, string> = {};
     veiculos.forEach((v, i) => { m[v.id] = colorFor(i); });
