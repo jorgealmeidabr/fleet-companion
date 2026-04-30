@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   canUserUseVehicle,
   getAllRestrictions,
+  loadAllRestrictions,
   RestrictionMap,
   VEHICLE_ACCESS_EVENT,
 } from "@/lib/vehicleAccess";
@@ -10,12 +11,13 @@ export function useVehicleAccess() {
   const [map, setMap] = useState<RestrictionMap>(() => getAllRestrictions());
 
   useEffect(() => {
+    let cancelled = false;
+    loadAllRestrictions().then(next => { if (!cancelled) setMap(next); }).catch(() => {});
     const refresh = () => setMap(getAllRestrictions());
     window.addEventListener(VEHICLE_ACCESS_EVENT, refresh);
-    window.addEventListener("storage", refresh);
     return () => {
+      cancelled = true;
       window.removeEventListener(VEHICLE_ACCESS_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
     };
   }, []);
 

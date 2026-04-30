@@ -38,9 +38,13 @@ export default function VeiculoDetalhe() {
 
   useEffect(() => {
     if (!id) return;
-    const r = getRestriction(id);
-    setRestrictedState(r.restricted);
-    setAllowedUserIds(r.allowedUserIds);
+    let cancelled = false;
+    getRestriction(id).then(r => {
+      if (cancelled) return;
+      setRestrictedState(r.restricted);
+      setAllowedUserIds(r.allowedUserIds);
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [id]);
 
   useEffect(() => {
@@ -71,12 +75,14 @@ export default function VeiculoDetalhe() {
     );
   };
 
-  const salvarRestricao = () => {
+  const salvarRestricao = async () => {
     if (!id) return;
     setSavingRestriction(true);
     try {
-      setRestriction(id, { restricted, allowedUserIds });
+      await setRestriction(id, { restricted, allowedUserIds });
       toast({ title: "Restrição salva", description: restricted ? `${allowedUserIds.length} usuário(s) liberado(s).` : "Veículo liberado para todos." });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e?.message ?? "Falha desconhecida", variant: "destructive" });
     } finally {
       setSavingRestriction(false);
     }
