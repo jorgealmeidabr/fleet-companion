@@ -225,7 +225,7 @@ export default function Solicitacoes() {
     <>
       <PageHeader
         title="Solicitações"
-        subtitle={isAdmin ? "Gerencie solicitações de manutenção e abastecimento" : "Abra um chamado de manutenção ou abastecimento"}
+        subtitle={isAdmin ? "Gestão de Solicitações de Manutenção e Abastecimento" : "Abra um chamado de manutenção ou abastecimento"}
       />
 
       {/* ============ VISÃO ADMIN ============ */}
