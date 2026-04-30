@@ -21,11 +21,67 @@ import { useToast } from "@/hooks/use-toast";
 export default function VeiculoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+  const { toast } = useToast();
   const [veiculo, setVeiculo] = useState<Veiculo | null>(null);
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Uso restrito (admin)
+  type UsuarioRow = { user_id: string; nome: string };
+  const [restricted, setRestrictedState] = useState(false);
+  const [allowedUserIds, setAllowedUserIds] = useState<string[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioRow[]>([]);
+  const [savingRestriction, setSavingRestriction] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    const r = getRestriction(id);
+    setRestrictedState(r.restricted);
+    setAllowedUserIds(r.allowedUserIds);
+  }, [id]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    (async () => {
+      const { data: perfis } = await (supabase as any)
+        .from("usuarios_perfis")
+        .select("user_id, motorista_id, ativo, tipo_conta")
+        .eq("ativo", true)
+        .eq("tipo_conta", "usuario");
+      const perfisRows = (perfis ?? []) as Array<Pick<UsuarioPerfil, "user_id" | "motorista_id" | "ativo" | "tipo_conta">>;
+      const motoristaIds = Array.from(new Set(perfisRows.map(p => p.motorista_id).filter(Boolean)));
+      let nomes: Record<string, string> = {};
+      if (motoristaIds.length) {
+        const { data: ms } = await supabase.from("motoristas").select("id, nome").in("id", motoristaIds);
+        nomes = Object.fromEntries(((ms ?? []) as Array<Pick<Motorista, "id" | "nome">>).map(m => [m.id, m.nome]));
+      }
+      const lista: UsuarioRow[] = perfisRows
+        .map(p => ({ user_id: p.user_id, nome: nomes[p.motorista_id] ?? "Sem nome" }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      setUsuarios(lista);
+    })();
+  }, [isAdmin]);
+
+  const toggleAllowed = (userId: string, checked: boolean) => {
+    setAllowedUserIds(prev =>
+      checked ? Array.from(new Set([...prev, userId])) : prev.filter(u => u !== userId)
+    );
+  };
+
+  const salvarRestricao = () => {
+    if (!id) return;
+    setSavingRestriction(true);
+    try {
+      setRestriction(id, { restricted, allowedUserIds });
+      toast({ title: "Restrição salva", description: restricted ? `${allowedUserIds.length} usuário(s) liberado(s).` : "Veículo liberado para todos." });
+    } finally {
+      setSavingRestriction(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!id) return;
