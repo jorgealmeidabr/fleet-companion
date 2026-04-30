@@ -25,9 +25,24 @@ export function usePermissions() {
         solicitacoes: true, acidentes: true,
       };
 
-  const p: Permissoes = permissoes ?? fallback;
+  // Mescla permissões salvas com defaults para módulos que devem
+  // estar liberados a todos os usuários (ex.: acidentes, solicitações).
+  const baseDefaults: Partial<Permissoes> = {
+    acidentes: true,
+    solicitacoes: true,
+    agendamentos: true,
+    checklists: true,
+  };
+  const p: Permissoes = permissoes
+    ? { ...baseDefaults, ...permissoes } as Permissoes
+    : fallback;
 
-  const canSee = (modulo: ModuloPermissao): boolean => isAdmin || !!p[modulo];
+  const canSee = (modulo: ModuloPermissao): boolean => {
+    if (isAdmin) return true;
+    // Se a chave nunca foi definida nas permissões salvas, usa default
+    if (permissoes && permissoes[modulo] === undefined && baseDefaults[modulo]) return true;
+    return !!p[modulo];
+  };
   const canSeeFinancial = (): boolean => isAdmin || !!p.financeiro;
 
   return {
