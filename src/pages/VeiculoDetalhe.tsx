@@ -4,21 +4,84 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtBRL, fmtDate, fmtNumber } from "@/lib/format";
 import { Money } from "@/components/Money";
-import type { Abastecimento, Checklist, Manutencao, Veiculo } from "@/lib/types";
-import { ArrowLeft, Car, Fuel, Wrench, ClipboardCheck, TrendingUp } from "lucide-react";
+import type { Abastecimento, Checklist, Manutencao, Veiculo, UsuarioPerfil, Motorista } from "@/lib/types";
+import { ArrowLeft, Car, Fuel, Wrench, ClipboardCheck, TrendingUp, Lock } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useAuth } from "@/hooks/useAuth";
+import { getRestriction, setRestriction } from "@/lib/vehicleAccess";
+import { useToast } from "@/hooks/use-toast";
 
 export default function VeiculoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+  const { toast } = useToast();
   const [veiculo, setVeiculo] = useState<Veiculo | null>(null);
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Uso restrito (admin)
+  type UsuarioRow = { user_id: string; nome: string };
+  const [restricted, setRestrictedState] = useState(false);
+  const [allowedUserIds, setAllowedUserIds] = useState<string[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioRow[]>([]);
+  const [savingRestriction, setSavingRestriction] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    const r = getRestriction(id);
+    setRestrictedState(r.restricted);
+    setAllowedUserIds(r.allowedUserIds);
+  }, [id]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    (async () => {
+      const { data: perfis } = await (supabase as any)
+        .from("usuarios_perfis")
+        .select("user_id, motorista_id, ativo, tipo_conta")
+        .eq("ativo", true)
+        .eq("tipo_conta", "usuario");
+      const perfisRows = (perfis ?? []) as Array<Pick<UsuarioPerfil, "user_id" | "motorista_id" | "ativo" | "tipo_conta">>;
+      const motoristaIds = Array.from(new Set(perfisRows.map(p => p.motorista_id).filter(Boolean)));
+      let nomes: Record<string, string> = {};
+      if (motoristaIds.length) {
+        const { data: ms } = await supabase.from("motoristas").select("id, nome").in("id", motoristaIds);
+        nomes = Object.fromEntries(((ms ?? []) as Array<Pick<Motorista, "id" | "nome">>).map(m => [m.id, m.nome]));
+      }
+      const lista: UsuarioRow[] = perfisRows
+        .map(p => ({ user_id: p.user_id, nome: nomes[p.motorista_id] ?? "Sem nome" }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      setUsuarios(lista);
+    })();
+  }, [isAdmin]);
+
+  const toggleAllowed = (userId: string, checked: boolean) => {
+    setAllowedUserIds(prev =>
+      checked ? Array.from(new Set([...prev, userId])) : prev.filter(u => u !== userId)
+    );
+  };
+
+  const salvarRestricao = () => {
+    if (!id) return;
+    setSavingRestriction(true);
+    try {
+      setRestriction(id, { restricted, allowedUserIds });
+      toast({ title: "Restrição salva", description: restricted ? `${allowedUserIds.length} usuário(s) liberado(s).` : "Veículo liberado para todos." });
+    } finally {
+      setSavingRestriction(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!id) return;
@@ -113,6 +176,71 @@ export default function VeiculoDetalhe() {
           </Card>
         </div>
       </div>
+
+      {isAdmin && (
+        <Card className="mb-6 shadow-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lock className="h-4 w-4" />
+              Uso restrito
+              {restricted && <Badge variant="secondary" className="ml-1">Ativo</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="restricted-toggle" className="text-sm font-medium">
+                  Restringir uso deste veículo
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Quando ativado, apenas usuários selecionados poderão reservar este veículo. Admins sempre veem todos os veículos.
+                </p>
+              </div>
+              <Switch
+                id="restricted-toggle"
+                checked={restricted}
+                onCheckedChange={setRestrictedState}
+              />
+            </div>
+
+            {restricted && (
+              <div className="space-y-2">
+                <Label className="text-sm">Usuários autorizados ({allowedUserIds.length})</Label>
+                {usuarios.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum usuário cadastrado.</p>
+                ) : (
+                  <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+                    {usuarios.map(u => {
+                      const checked = allowedUserIds.includes(u.user_id);
+                      return (
+                        <label
+                          key={u.user_id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => toggleAllowed(u.user_id, !!v)}
+                          />
+                          <span>{u.nome}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button variant="brand" onClick={salvarRestricao} disabled={savingRestriction}>
+                Salvar
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Configuração armazenada localmente neste navegador.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="manutencoes">
         <TabsList>

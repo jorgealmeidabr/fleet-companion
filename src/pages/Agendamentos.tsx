@@ -25,6 +25,7 @@ import { uploadFiles } from "@/lib/storage";
 import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
 import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
 import { janelaOcupada } from "@/lib/agendamento";
+import { useVehicleAccess } from "@/hooks/useVehicleAccess";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -54,11 +55,12 @@ const toDatetimeLocal = (d: Date) => {
 
 export default function Agendamentos() {
   const { rows, loading, insert, update } = useTable<Agendamento>("agendamentos");
-  const { isAdmin, perfil = null } = useAuth();
+  const { isAdmin, perfil = null, user } = useAuth();
   const { toast } = useToast();
   const { pendentes: checklistPendentes } = useChecklistPendente();
   const temPendencia = !isAdmin && checklistPendentes.length > 0;
   const navigate = useNavigate();
+  const { filterAllowed } = useVehicleAccess();
 
   // Toca 3 bipes curtos via WebAudio + mensagem de voz (TTS)
   const playReturnBeeps = () => {
@@ -166,6 +168,10 @@ export default function Agendamentos() {
   // Mapas auxiliares
   const veiculoMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
   const motoristaMap = useMemo(() => Object.fromEntries(motoristas.map(m => [m.id, m])), [motoristas]);
+  const veiculosVisiveis = useMemo(
+    () => filterAllowed(veiculos, user?.id ?? null, isAdmin),
+    [veiculos, user?.id, isAdmin, filterAllowed],
+  );
   const colorByVeiculo = useMemo(() => {
     const m: Record<string, string> = {};
     veiculos.forEach((v, i) => { m[v.id] = colorFor(i); });
@@ -406,14 +412,14 @@ export default function Agendamentos() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {veiculos.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Nenhum veículo cadastrado.</p>
+                  {veiculosVisiveis.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Nenhum veículo disponível para você.</p>
                   ) : selectedDay ? (
                     <>
                       <p className="text-xs text-muted-foreground">
                         Exibindo reservas de <strong>todos os usuários</strong> para este dia. Use a visão para identificar horários livres.
                       </p>
-                      {veiculos.map(v => {
+                      {veiculosVisiveis.map(v => {
                         const ags = ativos.filter(a => a.veiculo_id === v.id);
                         const agsNoDia = ags
                           .filter(a => inRange(selectedDay, a.data_saida, a.data_retorno_prevista))
@@ -509,11 +515,11 @@ export default function Agendamentos() {
               <CardTitle className="text-base">Selecione um veículo</CardTitle>
             </CardHeader>
             <CardContent>
-              {veiculos.length === 0 ? (
-                <p className="text-muted-foreground">Nenhum veículo cadastrado.</p>
+              {veiculosVisiveis.length === 0 ? (
+                <p className="text-muted-foreground">Nenhum veículo disponível para você.</p>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {veiculos.map(v => {
+                  {veiculosVisiveis.map(v => {
                     const selecionavel = isVeiculoSelecionavel(v);
                     return (
                       <button
