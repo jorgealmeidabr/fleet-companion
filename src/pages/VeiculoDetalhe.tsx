@@ -177,6 +177,71 @@ export default function VeiculoDetalhe() {
         </div>
       </div>
 
+      {isAdmin && (
+        <Card className="mb-6 shadow-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lock className="h-4 w-4" />
+              Uso restrito
+              {restricted && <Badge variant="secondary" className="ml-1">Ativo</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="restricted-toggle" className="text-sm font-medium">
+                  Restringir uso deste veículo
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Quando ativado, apenas usuários selecionados poderão reservar este veículo. Admins sempre veem todos os veículos.
+                </p>
+              </div>
+              <Switch
+                id="restricted-toggle"
+                checked={restricted}
+                onCheckedChange={setRestrictedState}
+              />
+            </div>
+
+            {restricted && (
+              <div className="space-y-2">
+                <Label className="text-sm">Usuários autorizados ({allowedUserIds.length})</Label>
+                {usuarios.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum usuário cadastrado.</p>
+                ) : (
+                  <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+                    {usuarios.map(u => {
+                      const checked = allowedUserIds.includes(u.user_id);
+                      return (
+                        <label
+                          key={u.user_id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => toggleAllowed(u.user_id, !!v)}
+                          />
+                          <span>{u.nome}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button variant="brand" onClick={salvarRestricao} disabled={savingRestriction}>
+                Salvar
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Configuração armazenada localmente neste navegador.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="manutencoes">
         <TabsList>
           <TabsTrigger value="manutencoes"><Wrench className="mr-1 h-4 w-4" />Manutenções ({manutencoes.length})</TabsTrigger>
