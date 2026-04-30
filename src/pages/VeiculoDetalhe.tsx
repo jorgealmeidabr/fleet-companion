@@ -4,12 +4,19 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtBRL, fmtDate, fmtNumber } from "@/lib/format";
 import { Money } from "@/components/Money";
-import type { Abastecimento, Checklist, Manutencao, Veiculo } from "@/lib/types";
-import { ArrowLeft, Car, Fuel, Wrench, ClipboardCheck, TrendingUp } from "lucide-react";
+import type { Abastecimento, Checklist, Manutencao, Veiculo, UsuarioPerfil, Motorista } from "@/lib/types";
+import { ArrowLeft, Car, Fuel, Wrench, ClipboardCheck, TrendingUp, Lock } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useAuth } from "@/hooks/useAuth";
+import { getRestriction, setRestriction } from "@/lib/vehicleAccess";
+import { useToast } from "@/hooks/use-toast";
 
 export default function VeiculoDetalhe() {
   const { id } = useParams<{ id: string }>();
