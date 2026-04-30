@@ -515,11 +515,11 @@ export default function Agendamentos() {
               <CardTitle className="text-base">Selecione um veículo</CardTitle>
             </CardHeader>
             <CardContent>
-              {veiculos.length === 0 ? (
-                <p className="text-muted-foreground">Nenhum veículo cadastrado.</p>
+              {veiculosVisiveis.length === 0 ? (
+                <p className="text-muted-foreground">Nenhum veículo disponível para você.</p>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {veiculos.map(v => {
+                  {veiculosVisiveis.map(v => {
                     const selecionavel = isVeiculoSelecionavel(v);
                     return (
                       <button
