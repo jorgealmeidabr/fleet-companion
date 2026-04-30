@@ -38,9 +38,13 @@ export default function VeiculoDetalhe() {
 
   useEffect(() => {
     if (!id) return;
-    const r = getRestriction(id);
-    setRestrictedState(r.restricted);
-    setAllowedUserIds(r.allowedUserIds);
+    let cancelled = false;
+    getRestriction(id).then(r => {
+      if (cancelled) return;
+      setRestrictedState(r.restricted);
+      setAllowedUserIds(r.allowedUserIds);
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [id]);
 
   useEffect(() => {
