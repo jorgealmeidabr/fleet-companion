@@ -14,6 +14,7 @@ interface Props {
 export function TrackingQrDialog({ veiculoId, onClose, onContinue }: Props) {
   const open = !!veiculoId;
   const url = veiculoId ? `${TRACKING_BASE_URL}/track/${veiculoId}` : "";
+  console.log("veiculoId passado para o QR:", veiculoId);
 
   const handleContinue = () => {
     onContinue();
