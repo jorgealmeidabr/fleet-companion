@@ -838,6 +838,16 @@ export default function Agendamentos() {
           })()}
         </DialogContent>
       </Dialog>
+
+      <TrackingQrDialog
+        veiculoId={trackingFor?.veiculo_id ?? null}
+        onClose={() => setTrackingFor(null)}
+        onContinue={() => {
+          const a = trackingFor;
+          setTrackingFor(null);
+          if (a) iniciarUso(a);
+        }}
+      />
     </>
   );
 }
