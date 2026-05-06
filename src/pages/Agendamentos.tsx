@@ -589,7 +589,11 @@ export default function Agendamentos() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {ehDono && (
-                            <Button size="sm" variant="outline" onClick={() => setTrackingFor(a)}>
+                            <Button size="sm" variant="outline" onClick={() => {
+                              console.log("agendamento selecionado:", a);
+                              console.log("veiculo_id:", a.veiculo_id);
+                              setTrackingFor(a);
+                            }}>
                               Iniciar uso
                             </Button>
                           )}
