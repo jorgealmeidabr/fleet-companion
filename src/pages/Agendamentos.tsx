@@ -26,6 +26,7 @@ import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
 import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
 import { janelaOcupada } from "@/lib/agendamento";
 import { useVehicleAccess } from "@/hooks/useVehicleAccess";
+import { TrackingQrDialog } from "@/components/TrackingQrDialog";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
