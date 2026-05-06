@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 
 // TODO: substituir pela URL real do projeto de rastreamento Lovable
-const TRACKING_BASE_URL = "https://rastreamento.lovable.app";
+const TRACKING_BASE_URL = "https://brqrastreamento.lovable.app";
 
 interface Props {
   veiculoId: string | null;
