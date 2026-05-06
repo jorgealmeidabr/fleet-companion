@@ -26,6 +26,7 @@ import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
 import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
 import { janelaOcupada } from "@/lib/agendamento";
 import { useVehicleAccess } from "@/hooks/useVehicleAccess";
+import { TrackingQrDialog } from "@/components/TrackingQrDialog";
 
 // Paleta determinística para colorir cada veículo no calendário
 const PALETTE = [
@@ -144,6 +145,7 @@ export default function Agendamentos() {
   // Devolução
   const [returning, setReturning] = useState<Agendamento | null>(null);
   const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string; foto_url?: string }>({});
+  const [trackingFor, setTrackingFor] = useState<Agendamento | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [savingDevolucao, setSavingDevolucao] = useState(false);
 
@@ -587,7 +589,7 @@ export default function Agendamentos() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {ehDono && (
-                            <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
+                            <Button size="sm" variant="outline" onClick={() => setTrackingFor(a)}>
                               Iniciar uso
                             </Button>
                           )}
@@ -836,6 +838,16 @@ export default function Agendamentos() {
           })()}
         </DialogContent>
       </Dialog>
+
+      <TrackingQrDialog
+        veiculoId={trackingFor?.veiculo_id ?? null}
+        onClose={() => setTrackingFor(null)}
+        onContinue={() => {
+          const a = trackingFor;
+          setTrackingFor(null);
+          if (a) iniciarUso(a);
+        }}
+      />
     </>
   );
 }
