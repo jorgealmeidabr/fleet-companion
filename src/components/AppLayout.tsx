@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Car, Users, Wrench, Fuel, CalendarRange, ClipboardCheck, AlertTriangle, History, LogOut, Moon, Sun, Bell, ShieldCheck, UserCircle2, FileText, AlertOctagon } from "lucide-react";
+import { LayoutDashboard, Car, Users, Wrench, Fuel, CalendarRange, ClipboardCheck, AlertTriangle, History, LogOut, Moon, Sun, Bell, ShieldCheck, UserCircle2, FileText, AlertOctagon, ChevronDown } from "lucide-react";
 import brqLogo from "@/assets/brq-logo-app.jpg";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -78,6 +79,12 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
   const { canSee } = usePermissions();
   const collapsed = state === "collapsed";
 
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(groups.map(g => [g.label, true]))
+  );
+  const toggleGroup = (label: string) =>
+    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+
   // CRÍTICO: itens sem acesso NÃO existem no DOM
   const visibleGroups = groups
     .map(g => ({ ...g, items: g.items.filter(i => !i.perm || canSee(i.perm)) }))
@@ -105,10 +112,33 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {visibleGroups.map(group => (
+        {visibleGroups.map(group => {
+          const isOpen = collapsed || openGroups[group.label];
+          return (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
+            <SidebarGroupLabel asChild>
+              <button
+                type="button"
+                onClick={() => !collapsed && toggleGroup(group.label)}
+                className="flex w-full items-center justify-between"
+              >
+                <span>{group.label}</span>
+                {!collapsed && (
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform duration-200",
+                      !openGroups[group.label] && "rotate-180",
+                    )}
+                  />
+                )}
+              </button>
+            </SidebarGroupLabel>
+            <SidebarGroupContent
+              className={cn(
+                "overflow-hidden transition-all duration-200",
+                isOpen ? "max-h-[1000px]" : "max-h-0",
+              )}
+            >
               <SidebarMenu>
                 {group.items.map(item => {
                   const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
@@ -150,7 +180,8 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+          );
+        })}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border gap-0 px-0 py-0">
         {!collapsed && (
