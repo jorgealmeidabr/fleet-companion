@@ -1,38 +1,53 @@
 ## Objetivo
-Corrigir o bug visual do menu lateral quando recolhido, ajustando apenas CSS/estilos no `AppLayout.tsx` (componente do Sidebar). Nenhuma rota, hook, query ou lógica será alterada.
+Adicionar funcionalidade de recolher/expandir grupos no menu lateral (`src/components/AppLayout.tsx`), sem alterar estilos, rotas, lógica ou outros componentes.
+
+## Escopo
+- **Único arquivo modificado:** `src/components/AppLayout.tsx`
+- **Único componente modificado:** `AppSidebar`
+- Nenhum outro arquivo, hook, rota, query ou componente será alterado.
 
 ## Mudanças
 
-Arquivo único: `src/components/AppLayout.tsx`
+### 1. Imports
+- Adicionar `useState` ao import do React.
+- Adicionar `ChevronDown` ao import existente do `lucide-react`.
 
-### 1. Container do Sidebar (estado colapsado)
-Adicionar classes condicionais no `<Sidebar>` para forçar largura fixa de 56px e overflow hidden quando `collapsed === true`:
-- `w-14` (56px) e `overflow-hidden` quando colapsado.
+### 2. Estado por grupo
+Dentro de `AppSidebar`, criar um estado que mapeia o label do grupo para `boolean` (todos começam `true` = expandido):
 
-### 2. Itens de navegação (`NavLink` dentro do `SidebarMenuButton`)
-Quando colapsado, aplicar:
-- `flex items-center justify-center w-full py-2` (padding 8px 0)
-- Manter o ícone com tamanho fixo `h-4 w-4 shrink-0` (já existe `h-4 w-4`, adicionar `shrink-0`).
+```ts
+const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
+  () => Object.fromEntries(groups.map(g => [g.label, true]))
+);
+const toggleGroup = (label: string) =>
+  setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+```
 
-### 3. Texto do item
-O `<span>` com o título já é renderizado apenas quando `!collapsed`. Para garantir que, em transição, não quebre layout, envolver com classes `overflow-hidden whitespace-nowrap` (no estado expandido também é seguro).
+### 3. Render do grupo
+Para cada `group` no `visibleGroups.map(...)`:
 
-### 4. Badge de notificação no estado colapsado
-Hoje o badge usa `absolute right-0 top-0 -translate-y-1 translate-x-1` quando colapsado. Ajustar para a especificação:
-- `absolute top-1 right-1.5` (≈ top: 4px; right: 6px), removendo os translates.
-- Manter `h-5 min-w-[20px]` etc.
+- O `<SidebarGroupLabel>` atual será substituído por um `<button>` (dentro do `SidebarGroupLabel` para preservar o estilo existente do label) que:
+  - Chama `toggleGroup(group.label)` no `onClick`.
+  - Mostra o título do grupo + um `<ChevronDown>` à direita.
+  - O ícone aplica `className="transition-transform duration-200"` e, quando o grupo está recolhido, adiciona `rotate-180` (via `cn`).
+  - Quando `collapsed` (sidebar em modo ícones), o botão é renderizado sem o chevron e sem `onClick` ativo — comportamento atual preservado.
 
-### 5. Header/Footer do Sidebar
-Quando colapsado, garantir que o conteúdo do header (logo) fique centralizado e sem overflow. O bloco de texto já só renderiza quando `!collapsed`, então apenas centralizar o wrapper do logo nesse estado (`justify-center` quando colapsado).
+- O `<SidebarGroupContent>` recebe um wrapper interno com classes:
+  - `overflow-hidden transition-all duration-200`
+  - `max-h-0` quando `!openGroups[group.label] && !collapsed`
+  - `max-h-[1000px]` (valor folgado, suficiente p/ qualquer grupo) caso contrário.
+  - Quando `collapsed`, sempre `max-h-[1000px]` (lógica ignorada).
+
+### 4. Comportamento quando colapsado
+- Bloco `if (collapsed) { ... ignore toggle ... }` no render do label/conteúdo: o chevron não aparece, o clique não faz nada (ou o handler vira no-op), e os itens permanecem visíveis (`max-h-[1000px]`).
+
+## Não alterar
+- Estilos existentes, classes Tailwind atuais, cores, tokens, ícones dos itens.
+- Rotas, `NavLink`, permissões (`canSee`), badges, hooks (`useAlerts`, `useRequestBadge`, etc.).
+- Componente `AppLayout` (apenas o `AppSidebar` interno).
+- Qualquer arquivo fora de `src/components/AppLayout.tsx`.
 
 ## Detalhes técnicos
-
-- Toda condicionalidade usará `cn(..., collapsed && "...")` seguindo o padrão já existente no arquivo.
-- Não tocar em `groups`, `NavLink to`, `usePermissions`, `useAlerts`, `useRequestBadge`, autenticação, ou qualquer outro componente.
-- Sem mudanças em `index.css` ou `tailwind.config.ts` — apenas classes utilitárias Tailwind já disponíveis.
-- Comportamento de toggling do sidebar (via `SidebarTrigger` / `useSidebar`) permanece intacto.
-
-## Resultado esperado
-- Menu recolhido com 56px de largura, ícones perfeitamente centralizados, sem texto visível, sem cortes.
-- Badge vermelho aparece no canto superior direito do ícone (top 4px / right 6px).
-- Nenhuma regressão funcional.
+- Animação via `max-height` + `transition-all duration-200` + `overflow-hidden` (conforme solicitado).
+- Rotação do chevron via `rotate-180` + `transition-transform duration-200`.
+- Estado local (não persistido) — cada reload reinicia com todos os grupos expandidos.
