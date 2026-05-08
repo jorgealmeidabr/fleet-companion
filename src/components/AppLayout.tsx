@@ -84,9 +84,15 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
     .filter(g => g.items.length > 0);
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border no-print">
+    <Sidebar
+      collapsible="icon"
+      className={cn(
+        "border-r border-sidebar-border no-print",
+        collapsed && "!w-14 overflow-hidden",
+      )}
+    >
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-2 py-2">
+        <div className={cn("flex items-center gap-2 px-2 py-2", collapsed && "justify-center px-0")}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white shadow-elevated">
             <img src={brqLogo} alt="BRQ Frota Interna" className="h-full w-full object-contain text-primary bg-white" />
           </div>
