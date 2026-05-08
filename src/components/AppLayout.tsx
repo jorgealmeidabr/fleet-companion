@@ -79,6 +79,12 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
   const { canSee } = usePermissions();
   const collapsed = state === "collapsed";
 
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(groups.map(g => [g.label, true]))
+  );
+  const toggleGroup = (label: string) =>
+    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+
   // CRÍTICO: itens sem acesso NÃO existem no DOM
   const visibleGroups = groups
     .map(g => ({ ...g, items: g.items.filter(i => !i.perm || canSee(i.perm)) }))
