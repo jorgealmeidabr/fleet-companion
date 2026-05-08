@@ -589,13 +589,9 @@ export default function Agendamentos() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {ehDono && (
-                            <Button size="sm" variant="outline" onClick={() => {
-                              console.log("agendamento selecionado:", a);
-                              console.log("veiculo_id:", a.veiculo_id);
-                              setTrackingFor(a);
-                            }}>
-                              Iniciar uso
-                            </Button>
+                             <Button size="sm" variant="outline" onClick={() => iniciarUso(a)}>
+                               Iniciar uso
+                             </Button>
                           )}
                           {ehDono && (
                             <Button size="sm" variant="brand"
@@ -843,15 +839,6 @@ export default function Agendamentos() {
         </DialogContent>
       </Dialog>
 
-      <TrackingQrDialog
-        veiculoId={trackingFor?.veiculo_id ?? null}
-        onClose={() => setTrackingFor(null)}
-        onContinue={() => {
-          const a = trackingFor;
-          setTrackingFor(null);
-          if (a) iniciarUso(a);
-        }}
-      />
     </>
   );
 }
