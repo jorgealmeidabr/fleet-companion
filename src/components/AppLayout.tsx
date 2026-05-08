@@ -121,14 +121,23 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
                   return (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton asChild isActive={active}>
-                        <NavLink to={item.url} end={item.url === "/"} className="relative">
-                          <item.icon className="h-4 w-4" />
-                          {!collapsed && <span className="flex-1">{item.title}</span>}
+                        <NavLink
+                          to={item.url}
+                          end={item.url === "/"}
+                          className={cn(
+                            "relative",
+                            collapsed && "flex items-center justify-center w-full py-2",
+                          )}
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          {!collapsed && (
+                            <span className="flex-1 overflow-hidden whitespace-nowrap">{item.title}</span>
+                          )}
                           {showBadge && (
                             <Badge variant={badgeVariant} className={cn(
                               "h-5 min-w-[20px] justify-center px-1.5 text-[10px]",
                               item.url === "/solicitacoes" && "bg-info text-info-foreground hover:bg-info opacity-0",
-                              collapsed && "absolute right-0 top-0 -translate-y-1 translate-x-1",
+                              collapsed && "absolute top-1 right-1.5",
                             )}>
                               {item.url === "/solicitacoes" ? "​" : badgeValue}
                             </Badge>
