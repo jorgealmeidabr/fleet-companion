@@ -112,10 +112,33 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {visibleGroups.map(group => (
+        {visibleGroups.map(group => {
+          const isOpen = collapsed || openGroups[group.label];
+          return (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
+            <SidebarGroupLabel asChild>
+              <button
+                type="button"
+                onClick={() => !collapsed && toggleGroup(group.label)}
+                className="flex w-full items-center justify-between"
+              >
+                <span>{group.label}</span>
+                {!collapsed && (
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform duration-200",
+                      !openGroups[group.label] && "rotate-180",
+                    )}
+                  />
+                )}
+              </button>
+            </SidebarGroupLabel>
+            <SidebarGroupContent
+              className={cn(
+                "overflow-hidden transition-all duration-200",
+                isOpen ? "max-h-[1000px]" : "max-h-0",
+              )}
+            >
               <SidebarMenu>
                 {group.items.map(item => {
                   const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
