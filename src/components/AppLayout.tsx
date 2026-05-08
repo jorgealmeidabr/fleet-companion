@@ -180,7 +180,8 @@ function AppSidebar({ alertCount, requestCount }: { alertCount: number; requestC
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+          );
+        })}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border gap-0 px-0 py-0">
         {!collapsed && (
