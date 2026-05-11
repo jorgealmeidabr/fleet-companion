@@ -19,8 +19,9 @@ export default function MotoristaDetalhe() {
 
   useEffect(() => {
     if (!id) return;
-    (async () => {
-      setLoading(true);
+    let first = true;
+    const load = async () => {
+      if (first) setLoading(true);
       const [m, ag, v] = await Promise.all([
         supabase.from("motoristas").select("*").eq("id", id).maybeSingle(),
         supabase.from("agendamentos").select("*").eq("motorista_id", id).order("data_saida", { ascending: false }),
@@ -31,8 +32,11 @@ export default function MotoristaDetalhe() {
       const map: Record<string, Veiculo> = {};
       ((v.data ?? []) as Veiculo[]).forEach(x => { map[x.id] = x; });
       setVeiculos(map);
-      setLoading(false);
-    })();
+      if (first) { setLoading(false); first = false; }
+    };
+    load();
+    const pid = setInterval(load, 10_000);
+    return () => clearInterval(pid);
   }, [id]);
 
   const dias = useMemo(() => {

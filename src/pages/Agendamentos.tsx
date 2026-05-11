@@ -304,6 +304,20 @@ export default function Agendamentos() {
 
   // ---- Iniciar uso (sincroniza km_atual)
   const iniciarUso = async (a: Agendamento) => {
+    // Verifica em tempo real se há condutor anterior que ainda não devolveu
+    const { data: pend } = await supabase
+      .from("agendamentos")
+      .select("id")
+      .eq("veiculo_id", a.veiculo_id)
+      .neq("id", a.id)
+      .is("data_retorno_real", null)
+      .in("status", ["ativo"])
+      .lt("data_saida", a.data_saida)
+      .limit(1);
+    if (pend && pend.length > 0) {
+      toast({ title: "O outro condutor ainda não devolveu o veículo.", variant: "destructive" });
+      return;
+    }
     if (a.km_saida != null) {
       await (supabase.from("veiculos") as any).update({ km_atual: a.km_saida }).eq("id", a.veiculo_id);
       await reloadVeiculos();

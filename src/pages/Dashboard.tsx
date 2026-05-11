@@ -44,7 +44,7 @@ export default function Dashboard() {
   const [ocupados, setOcupados] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    (async () => {
+    const load = async () => {
       const [v, m, a, mo, c, mu, ag] = await Promise.all([
         supabase.from("veiculos").select("*"),
         supabase.from("manutencoes").select("*"),
@@ -62,7 +62,10 @@ export default function Dashboard() {
       setMultas((mu.data ?? []) as Multa[]);
       setOcupados(new Set(((ag.data ?? []) as Array<{ veiculo_id: string }>).map(x => x.veiculo_id)));
       setLoading(false);
-    })();
+    };
+    load();
+    const id = setInterval(load, 10_000);
+    return () => clearInterval(id);
   }, []);
 
   // Status efetivo: agendamento ativo sobrescreve "disponivel" para "reservado"
