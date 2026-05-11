@@ -91,8 +91,9 @@ export default function VeiculoDetalhe() {
 
   useEffect(() => {
     if (!id) return;
-    (async () => {
-      setLoading(true);
+    let first = true;
+    const load = async () => {
+      if (first) setLoading(true);
       const [v, m, a, c] = await Promise.all([
         supabase.from("veiculos").select("*").eq("id", id).maybeSingle(),
         supabase.from("manutencoes").select("*").eq("veiculo_id", id).order("data", { ascending: false }),
@@ -103,8 +104,11 @@ export default function VeiculoDetalhe() {
       setManutencoes((m.data ?? []) as Manutencao[]);
       setAbastecimentos((a.data ?? []) as Abastecimento[]);
       setChecklists((c.data ?? []) as Checklist[]);
-      setLoading(false);
-    })();
+      if (first) { setLoading(false); first = false; }
+    };
+    load();
+    const pid = setInterval(load, 10_000);
+    return () => clearInterval(pid);
   }, [id]);
 
   const consumoData = useMemo(

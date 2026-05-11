@@ -15,7 +15,12 @@ export function useTable<T extends { id: string }>(table: string) {
     setLoading(false);
   };
 
-  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [table]);
+  useEffect(() => {
+    reload();
+    const id = setInterval(reload, 10_000);
+    return () => clearInterval(id);
+    /* eslint-disable-next-line */
+  }, [table]);
 
   const insert = async (values: Partial<T>) => {
     const { error } = await (supabase.from(table as any) as any).insert(values);

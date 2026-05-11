@@ -39,7 +39,11 @@ export default function AcidenteDetalhe() {
     }
     setLoading(false);
   };
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    load();
+    const pid = setInterval(load, 10_000);
+    return () => clearInterval(pid);
+  }, [id]);
 
   async function alterarStatus(s: AcidenteStatus) {
     const { error } = await (supabase as any).from("acidentes").update({ status: s }).eq("id", id);
