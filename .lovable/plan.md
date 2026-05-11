@@ -1,53 +1,75 @@
-## Objetivo
-Adicionar funcionalidade de recolher/expandir grupos no menu lateral (`src/components/AppLayout.tsx`), sem alterar estilos, rotas, lógica ou outros componentes.
+Execute o plano abaixo exatamente como descrito, **sem alterar layout, estilos, rotas, autenticação, componentes visuais ou** `Veiculos.tsx`.
 
-## Escopo
-- **Único arquivo modificado:** `src/components/AppLayout.tsx`
-- **Único componente modificado:** `AppSidebar`
-- Nenhum outro arquivo, hook, rota, query ou componente será alterado.
+---
 
-## Mudanças
+**1. Migration SQL —** `supabase_setup/17_migration_v10_agendamentos_30min.sql` **(novo arquivo)**
 
-### 1. Imports
-- Adicionar `useState` ao import do React.
-- Adicionar `ChevronDown` ao import existente do `lucide-react`.
+Reescrever a função `check_agendamento_conflito` usada pelo trigger `agendamentos_block_overlap` para calcular o fim da reserva existente como:
 
-### 2. Estado por grupo
-Dentro de `AppSidebar`, criar um estado que mapeia o label do grupo para `boolean` (todos começam `true` = expandido):
+sql
 
-```ts
-const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
-  () => Object.fromEntries(groups.map(g => [g.label, true]))
-);
-const toggleGroup = (label: string) =>
-  setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+```sql
+reserva_fim = COALESCE(data_retorno_real, data_saida + interval '30 minutes')
 ```
 
-### 3. Render do grupo
-Para cada `group` no `visibleGroups.map(...)`:
+Isso permite criar novo agendamento após os 30min estimados, mesmo sem devolução física. Não alterar schema, policies nem outros triggers.
 
-- O `<SidebarGroupLabel>` atual será substituído por um `<button>` (dentro do `SidebarGroupLabel` para preservar o estilo existente do label) que:
-  - Chama `toggleGroup(group.label)` no `onClick`.
-  - Mostra o título do grupo + um `<ChevronDown>` à direita.
-  - O ícone aplica `className="transition-transform duration-200"` e, quando o grupo está recolhido, adiciona `rotate-180` (via `cn`).
-  - Quando `collapsed` (sidebar em modo ícones), o botão é renderizado sem o chevron e sem `onClick` ativo — comportamento atual preservado.
+---
 
-- O `<SidebarGroupContent>` recebe um wrapper interno com classes:
-  - `overflow-hidden transition-all duration-200`
-  - `max-h-0` quando `!openGroups[group.label] && !collapsed`
-  - `max-h-[1000px]` (valor folgado, suficiente p/ qualquer grupo) caso contrário.
-  - Quando `collapsed`, sempre `max-h-[1000px]` (lógica ignorada).
+**2.** `src/pages/Agendamentos.tsx` **— apenas a função** `iniciarUso`
 
-### 4. Comportamento quando colapsado
-- Bloco `if (collapsed) { ... ignore toggle ... }` no render do label/conteúdo: o chevron não aparece, o clique não faz nada (ou o handler vira no-op), e os itens permanecem visíveis (`max-h-[1000px]`).
+Antes de prosseguir com o início do uso, consultar em tempo real se existe agendamento anterior do mesmo veículo ainda não devolvido:
 
-## Não alterar
-- Estilos existentes, classes Tailwind atuais, cores, tokens, ícones dos itens.
-- Rotas, `NavLink`, permissões (`canSee`), badges, hooks (`useAlerts`, `useRequestBadge`, etc.).
-- Componente `AppLayout` (apenas o `AppSidebar` interno).
-- Qualquer arquivo fora de `src/components/AppLayout.tsx`.
+ts
 
-## Detalhes técnicos
-- Animação via `max-height` + `transition-all duration-200` + `overflow-hidden` (conforme solicitado).
-- Rotação do chevron via `rotate-180` + `transition-transform duration-200`.
-- Estado local (não persistido) — cada reload reinicia com todos os grupos expandidos.
+```ts
+const { data: pend } = await supabase
+  .from("agendamentos")
+  .select("id")
+  .eq("veiculo_id", a.veiculo_id)
+  .neq("id", a.id)
+  .is("data_retorno_real", null)
+  .in("status", ["ativo"])
+  .lt("data_saida", a.data_saida)
+  .limit(1);
+if (pend && pend.length > 0) {
+  toast({ title: "O outro condutor ainda não devolveu o veículo.", variant: "destructive" });
+  return;
+}
+```
+
+Somente após essa verificação prosseguir com o fluxo atual (`update km_atual` + toast). Não alterar devolução, cálculo de 30min nem nenhum outro trecho.
+
+---
+
+**3.** `src/hooks/useTable.ts` **— polling de 10s**
+
+Dentro do hook, adicionar intervalo que chama `reload` a cada 10 segundos:
+
+ts
+
+```ts
+useEffect(() => {
+  reload();
+  const id = setInterval(reload, 10_000);
+  return () => clearInterval(id);
+}, [table]);
+```
+
+Não alterar a assinatura do hook nem criar novos componentes.
+
+---
+
+**4.** `src/pages/Dashboard.tsx` **/** `src/pages/Index.tsx` **— polling de 10s**
+
+Adicionar `setInterval` de 10 segundos para refazer as queries existentes (sem reload de página). Não alterar layout nem lógica de exibição.
+
+---
+
+**5.** `src/pages/VeiculoDetalhe.tsx`**,** `src/pages/MotoristaDetalhe.tsx`**,** `src/pages/AcidenteDetalhe.tsx` **— polling de 10s**
+
+Adicionar `setInterval` de 10 segundos para refazer as queries existentes de cada página. Não alterar layout nem lógica de exibição.
+
+---
+
+`Veiculos.tsx` **não deve ser tocada** — já possui realtime + polling próprio de 15s.
