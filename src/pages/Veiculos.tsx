@@ -185,7 +185,7 @@ export default function Veiculos() {
   const statusDotClass = (s: Evento["status"]) =>
     s === "disponivel" ? "bg-success" : s === "reservado" ? "bg-warning" : "bg-info";
   const horaHHmm = (iso: string) =>
-    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
   // Deriva status efetivo: agendamento ativo vira "reservado" (futuro) ou "em_uso" (já saiu)
   const rowsEfetivos = useMemo<Veiculo[]>(() => rows.map(v => {
@@ -198,7 +198,7 @@ export default function Veiculos() {
   }), [rows, agendamentosAtivos, now]);
 
   const formatHHmm = (iso: string) =>
-    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
   const formatDuracao = (desdeISO: string, nowMs: number) => {
     const diff = Math.max(0, nowMs - new Date(desdeISO).getTime());
     const totalMin = Math.floor(diff / 60_000);

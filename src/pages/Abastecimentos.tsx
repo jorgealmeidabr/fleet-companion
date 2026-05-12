@@ -6,7 +6,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { useTable } from "@/hooks/useTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/lib/supabase";
-import { fmtDate, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtNumber, nowSP } from "@/lib/format";
 import type { Abastecimento, Veiculo, Motorista } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Droplet, DollarSign, Gauge, AlertTriangle, Download } from "lucide-react";
@@ -63,7 +63,7 @@ export default function Abastecimentos() {
 
   // KPIs do mês corrente
   const monthKpis = useMemo(() => {
-    const now = new Date();
+    const now = nowSP();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const monthRows = rows.filter(r => r.data?.startsWith(ym));
     const litros = monthRows.reduce((s, r) => s + Number(r.litros || 0), 0);

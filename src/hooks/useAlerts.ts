@@ -67,14 +67,14 @@ export function useAlerts() {
         out.push({
           id: `cnh-${m.id}`, level: "critico", tipo: "CNH",
           titulo: `CNH vencida — ${m.nome}`,
-          descricao: `Vencida em ${new Date(m.cnh_validade).toLocaleDateString("pt-BR")}`,
+          descricao: `Vencida em ${new Date(m.cnh_validade).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
           motoristaId: m.id, link: `/motoristas/${m.id}`,
         });
       } else if (diff < 30 * DAY) {
         out.push({
           id: `cnh-${m.id}`, level: "atencao", tipo: "CNH",
           titulo: `CNH vence em breve — ${m.nome}`,
-          descricao: `Vence em ${new Date(m.cnh_validade).toLocaleDateString("pt-BR")}`,
+          descricao: `Vence em ${new Date(m.cnh_validade).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
           motoristaId: m.id, link: `/motoristas/${m.id}`,
         });
       }
@@ -155,7 +155,7 @@ export function useAlerts() {
       out.push({
         id: `ac-${ac.id}`, level: "atencao", tipo: "Acidente",
         titulo: `Nova ocorrência registrada — ${ac.motorista_nome}, ${v?.placa ?? "veículo"}`,
-        descricao: `Protocolo ${ac.protocolo} • ${new Date(ac.data_hora).toLocaleString("pt-BR")}`,
+        descricao: `Protocolo ${ac.protocolo} • ${new Date(ac.data_hora).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         veiculoId: ac.veiculo_id ?? undefined,
         link: `/acidentes/${ac.id}`,
       });

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/StatusBadge";
-import { fmtDate, fmtDateTime, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtNumber, nowSP } from "@/lib/format";
 import type { Agendamento, Motorista, Veiculo } from "@/lib/types";
 import { ArrowLeft, AlertTriangle, Mail, Phone } from "lucide-react";
 
@@ -41,7 +41,7 @@ export default function MotoristaDetalhe() {
 
   const dias = useMemo(() => {
     if (!motorista) return 0;
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const hoje = nowSP(); hoje.setHours(0, 0, 0, 0);
     const v = new Date(motorista.cnh_validade); v.setHours(0, 0, 0, 0);
     return Math.round((v.getTime() - hoje.getTime()) / 86400000);
   }, [motorista]);

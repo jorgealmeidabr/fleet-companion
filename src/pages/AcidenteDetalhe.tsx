@@ -143,7 +143,7 @@ export default function AcidenteDetalhe() {
             <div>
               <div className="text-xs uppercase tracking-wide">BRQ — Frota Interna</div>
               <h1 className="text-2xl font-bold">Relatório de Ocorrência de Acidente</h1>
-              <div className="text-xs">Protocolo: <strong>{acidente.protocolo}</strong> • Gerado em {new Date().toLocaleString("pt-BR")}</div>
+              <div className="text-xs">Protocolo: <strong>{acidente.protocolo}</strong> • Gerado em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</div>
             </div>
           </div>
 

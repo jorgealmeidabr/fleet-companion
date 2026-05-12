@@ -4,7 +4,7 @@ import type { Veiculo, Manutencao, Abastecimento, Motorista, Checklist, Multa } 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/KpiCard";
 import { PageHeader } from "@/components/PageHeader";
-import { fmtBRL, fmtNumber } from "@/lib/format";
+import { fmtBRL, fmtNumber, nowSP } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAlerts } from "@/hooks/useAlerts";
 import { Car, Wrench, AlertTriangle, Fuel, Gauge, Bell } from "lucide-react";
@@ -78,7 +78,7 @@ export default function Dashboard() {
   const emManutencao = veiculos.filter(v => statusEfetivo(v) === "manutencao").length;
   const inativos = veiculos.filter(v => statusEfetivo(v) === "inativo").length;
 
-  const now = new Date();
+  const now = nowSP();
   const ini = startOfMonth(now), fim = endOfMonth(now);
   const iniAnt = startOfMonth(subMonths(now, 1)), fimAnt = endOfMonth(subMonths(now, 1));
 

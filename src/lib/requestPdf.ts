@@ -80,7 +80,7 @@ export async function buildRequestPdf({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     const dt = new Date(request.created_at);
-    const dtStr = isNaN(dt.getTime()) ? "—" : dt.toLocaleString("pt-BR");
+    const dtStr = isNaN(dt.getTime()) ? "—" : dt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
     doc.text(`Protocolo: ${request.protocol ?? "—"}`, 100, 62);
     doc.text(`Emitido em: ${dtStr}`, 100, 76);
 
