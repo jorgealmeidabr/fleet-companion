@@ -57,7 +57,13 @@ const fields: FieldDef[] = [
 export default function Veiculos() {
   const navigate = useNavigate();
   const { rows, loading, insert, update } = useTable<Veiculo>("veiculos");
-  const { isAdmin } = useAuth();
+  const { isAdmin, perfil } = useAuth();
+  const [cnhUsuario, setCnhUsuario] = useState<string | null>(null);
+  useEffect(() => {
+    if (isAdmin || !perfil?.motorista_id) { setCnhUsuario(null); return; }
+    supabase.from("motoristas").select("cnh_categoria").eq("id", perfil.motorista_id).maybeSingle()
+      .then(({ data }) => setCnhUsuario((data as any)?.cnh_categoria ?? null));
+  }, [isAdmin, perfil?.motorista_id]);
   const [editing, setEditing] = useState<Veiculo | null>(null);
   const [busca, setBusca] = useState("");
   const [fStatus, setFStatus] = useState<string>("todos");
