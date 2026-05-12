@@ -49,6 +49,8 @@ const fields: FieldDef[] = [
   { name: "km_atual", label: "Km atual", type: "number", required: true },
   { name: "status", label: "Status", type: "select", required: true,
     options: [{ label: "Disponível", value: "disponivel" }, { label: "Manutenção", value: "manutencao" }, { label: "Inativo", value: "inativo" }, { label: "Reservado", value: "reservado" }] },
+  { name: "cnh_necessaria", label: "CNH necessária", type: "select", required: true,
+    options: [{ label: "A (motos)", value: "A" }, { label: "B (carros)", value: "B" }, { label: "AB (qualquer)", value: "AB" }] },
   { name: "foto_url", label: "Foto", type: "file", bucket: "veiculos" },
 ];
 
