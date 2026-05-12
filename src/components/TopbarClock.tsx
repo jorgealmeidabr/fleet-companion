@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { nowSP } from "@/lib/format";
 
 const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const MONTHS_ABBR = [
@@ -9,10 +10,10 @@ const MONTHS_ABBR = [
 const pad = (n: number) => String(n).padStart(2, "0");
 
 export function TopbarClock() {
-  const [now, setNow] = useState<Date>(() => new Date());
+  const [now, setNow] = useState<Date>(() => nowSP());
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const id = setInterval(() => setNow(nowSP()), 1000);
     return () => clearInterval(id);
   }, []);
 
