@@ -248,13 +248,14 @@ export default function Veiculos() {
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return rowsEfetivos.filter(v => {
+      if (!isAdmin && cnhUsuario != null && !cnhPermite(cnhUsuario, v.cnh_necessaria)) return false;
       if (q && !v.placa.toLowerCase().includes(q) && !v.modelo.toLowerCase().includes(q)) return false;
       if (fStatus !== "todos" && v.status !== fStatus) return false;
       if (fTipo !== "todos" && v.tipo !== fTipo) return false;
       if (fComb !== "todos" && v.combustivel !== fComb) return false;
       return true;
     });
-  }, [rowsEfetivos, busca, fStatus, fTipo, fComb]);
+  }, [rowsEfetivos, busca, fStatus, fTipo, fComb, isAdmin, cnhUsuario]);
 
   return (
     <>
