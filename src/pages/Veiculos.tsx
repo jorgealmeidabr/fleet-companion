@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { janelaOcupada } from "@/lib/agendamento";
+import { cnhPermite } from "@/lib/cnh";
 import { VoiceActiveIndicator } from "@/components/VoiceActiveIndicator";
 
 
