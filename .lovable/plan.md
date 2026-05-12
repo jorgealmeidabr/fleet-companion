@@ -1,27 +1,47 @@
-## Filtro por categoria de CNH em Veículos
+## Fuso horário Brasília (America/Sao_Paulo)
 
-### O que muda
+Aplicar a regra em todo o projeto, mas centralizando para evitar dezenas de pontos divergentes e bugs sutis.
 
-1) **Schema (banco):** adicionar coluna `cnh_necessaria` em `veiculos` com valores permitidos `'A' | 'B' | 'AB'`, default `'B'` (a maior parte da frota são carros). Backfill automático: motos → `'A'`, demais tipos → `'B'`.
+### Estratégia
 
-2) **Tipo TS:** adicionar `cnh_necessaria: 'A' | 'B' | 'AB'` em `Veiculo` (`src/lib/types.ts`).
+1) **Centralizar a formatação em `src/lib/format.ts`** adicionando `timeZone: "America/Sao_Paulo"` em `fmtDate`, `fmtDateTime` e `fmtDateTimeShort`. Todos os componentes que já usam essas helpers passam a exibir em horário de Brasília sem mudança adicional.
 
-3) **Form de cadastro/edição (`src/pages/Veiculos.tsx`):** adicionar campo select "CNH necessária" no `fields` (A / B / AB).
+2) **Substituir chamadas diretas a `toLocaleString/Date/TimeString("pt-BR", ...)`** que ainda existem fora das helpers para também passar `timeZone: "America/Sao_Paulo"`. Pontos identificados:
+   - `src/pages/Veiculos.tsx` (2 ocorrências de `toLocaleTimeString`)
+   - `src/pages/Agendamentos.tsx` (`selectedDay.toLocaleDateString`, `day.toLocaleDateString`)
+   - `src/pages/AcidenteDetalhe.tsx` (`new Date().toLocaleString("pt-BR")`)
+   - `src/hooks/useAlerts.ts` (3 ocorrências)
+   - `src/lib/requestPdf.ts` (1 ocorrência relevante de data)
+   - `src/components/DigitalClock.tsx` e `src/components/TopbarClock.tsx`: passar `timeZone` no `toLocaleTimeString` interno (e não usar o anti-pattern de "Date convertido").
 
-4) **Helper de compatibilidade (`src/lib/cnh.ts` novo):** função `cnhPermite(cnhUsuario, cnhVeiculo)` — extrai letras únicas da categoria do motorista (ex.: "AB", "AD", "ACC") e checa se contém a do veículo. Regra solicitada (A→moto, B→carro, AB→tudo) é caso particular dessa lógica.
+3) **"Agora" em horário de Brasília** — adicionar helper `nowSP()` em `src/lib/format.ts` que retorna um `Date` representando o instante atual interpretado para São Paulo, conforme solicitado:
+   ```ts
+   export const nowSP = () =>
+     new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+   ```
+   Substituir os usos de `new Date()` que representam "horário atual exibido/usado pelo app" por `nowSP()`:
+   - `src/pages/Dashboard.tsx` (`now`)
+   - `src/pages/Abastecimentos.tsx` (`now`)
+   - `src/pages/Motoristas.tsx`, `src/pages/MotoristaDetalhe.tsx` (`hoje`)
+   - `src/pages/AcidentesUsuario.tsx` (2 ocorrências de `d`)
+   - `src/components/DigitalClock.tsx` e `src/components/TopbarClock.tsx` (state `now`)
+   - `src/pages/Agendamentos.tsx` `selectedDay` inicial e o `new Date().toISOString()` exibido em texto.
 
-5) **Listagem (`src/pages/Veiculos.tsx` e onde mais houver):** seguindo o padrão existente do `useVehicleAccess` (filterAllowed remove da lista), os veículos fora da categoria do usuário **não aparecem** para usuários comuns. Admin vê tudo. Implementação: após o `filterAllowed` atual, aplicar mais um filtro por CNH usando o `cnh_categoria` do motorista vinculado ao usuário logado (vem de `perfil.motorista_id` → tabela `motoristas`).
+4) **Não alterar** os `new Date().toISOString()` que vão para o **banco** (Supabase espera UTC):
+   - `useAuth.tsx` (`last_login`)
+   - `Agendamentos.tsx` (`data_retorno_real`)
+   - `Checklists.tsx` (`data` ISO date)
+   - Nomes de arquivos CSV (`Historico.tsx`, `Manutencoes.tsx`, `Abastecimentos.tsx`, `Multas.tsx`)
+   - `validators.ts` (`getFullYear`)
+   
+   Esses valores são serializados para armazenamento/transferência, não exibidos. Forçar fuso aqui causaria gravação errada no banco.
 
-6) **Reserva (`src/pages/Agendamentos.tsx`):** na criação do agendamento (e em "Iniciar uso"), validar antes de gravar. Se a CNH do motorista não cobrir `cnh_necessaria` do veículo, abortar com toast: `Sua habilitação categoria {X} não permite conduzir este veículo.`
+### Observação técnica importante
 
-### Arquivos
+O padrão `new Date(new Date().toLocaleString("en-US", { timeZone: ... }))` cria um `Date` cujo "wall clock" no fuso local do navegador coincide com o horário de Brasília — útil para cálculos visuais (ex.: "qual o dia hoje em SP"), porém **não deve ser gravado em campos `timestamptz` do banco** (gera offset duplo). Por isso a regra é aplicada apenas a usos visuais/cálculos locais, e a exibição usa `toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })`, que é a forma correta e independente do fuso da máquina.
 
-- `supabase_setup/18_migration_v11_cnh_necessaria.sql` (novo) — coluna + check + backfill.
-- `src/lib/types.ts` — campo no `Veiculo`.
-- `src/lib/cnh.ts` (novo) — `cnhPermite(...)`.
-- `src/pages/Veiculos.tsx` — campo no form + filtro extra na listagem.
-- `src/pages/Agendamentos.tsx` — filtro extra na lista de veículos selecionáveis + validação no submit do novo agendamento e no `iniciarUso`.
+### Arquivos editados
 
-### Não muda
+`src/lib/format.ts`, `src/pages/Veiculos.tsx`, `src/pages/Agendamentos.tsx`, `src/pages/AcidenteDetalhe.tsx`, `src/pages/AcidentesUsuario.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Abastecimentos.tsx`, `src/pages/Motoristas.tsx`, `src/pages/MotoristaDetalhe.tsx`, `src/components/DigitalClock.tsx`, `src/components/TopbarClock.tsx`, `src/hooks/useAlerts.ts`, `src/lib/requestPdf.ts`.
 
-Estilos, rotas, layout, hooks de auth, RLS, demais validações, fluxo de devolução/checklist, `useVehicleAccess`, regra dos 30min, polling.
+Nenhuma alteração em estilos, rotas, lógica de negócio, RLS, queries ou outros componentes.
