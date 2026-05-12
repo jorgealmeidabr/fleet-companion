@@ -6,7 +6,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { useTable } from "@/hooks/useTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/lib/supabase";
-import { fmtDate, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtNumber, nowSP } from "@/lib/format";
 import type { Abastecimento, Veiculo, Motorista } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Droplet, DollarSign, Gauge, AlertTriangle, Download } from "lucide-react";
