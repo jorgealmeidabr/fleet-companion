@@ -162,7 +162,7 @@ export async function buildRequestPdf({
   );
   rowLabel(
     "Quilometragem:",
-    request.km != null ? `${Number(request.km).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} km` : "—"
+    request.km != null ? `${Number(request.km).toLocaleString("pt-BR")} km` : "—"
   );
 
   // ===== DETALHES =====

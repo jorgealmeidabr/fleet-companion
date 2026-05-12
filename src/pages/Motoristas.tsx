@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTable } from "@/hooks/useTable";
 import { useAuth } from "@/hooks/useAuth";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, nowSP } from "@/lib/format";
 import type { Motorista } from "@/lib/types";
 import { Plus, Search, MoreVertical, Pencil, Eye, AlertTriangle, Users } from "lucide-react";
 import { validarCNH, formatarCNH, validarEmail, validarTelefone, formatarTelefone } from "@/lib/validators";

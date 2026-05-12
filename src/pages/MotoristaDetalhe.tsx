@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/StatusBadge";
-import { fmtDate, fmtDateTime, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtNumber, nowSP } from "@/lib/format";
 import type { Agendamento, Motorista, Veiculo } from "@/lib/types";
 import { ArrowLeft, AlertTriangle, Mail, Phone } from "lucide-react";
 
