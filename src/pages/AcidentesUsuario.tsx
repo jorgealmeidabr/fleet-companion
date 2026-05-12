@@ -28,7 +28,7 @@ const PASSOS = [
 ];
 
 function gerarProtocolo() {
-  const d = new Date();
+  const d = nowSP();
   const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   const rand = Math.floor(1000 + Math.random() * 9000);
   return `AC-${stamp}-${rand}`;
@@ -45,7 +45,7 @@ export default function AcidentesUsuario() {
   // form
   const [veiculoId, setVeiculoId] = useState("");
   const [dataHora, setDataHora] = useState(() => {
-    const d = new Date();
+    const d = nowSP();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().slice(0, 16);
   });
