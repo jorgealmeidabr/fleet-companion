@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { janelaOcupada } from "@/lib/agendamento";
+import { cnhPermite } from "@/lib/cnh";
 import { VoiceActiveIndicator } from "@/components/VoiceActiveIndicator";
 
 
@@ -49,13 +50,21 @@ const fields: FieldDef[] = [
   { name: "km_atual", label: "Km atual", type: "number", required: true },
   { name: "status", label: "Status", type: "select", required: true,
     options: [{ label: "Disponível", value: "disponivel" }, { label: "Manutenção", value: "manutencao" }, { label: "Inativo", value: "inativo" }, { label: "Reservado", value: "reservado" }] },
+  { name: "cnh_necessaria", label: "CNH necessária", type: "select", required: true,
+    options: [{ label: "A (motos)", value: "A" }, { label: "B (carros)", value: "B" }, { label: "AB (qualquer)", value: "AB" }] },
   { name: "foto_url", label: "Foto", type: "file", bucket: "veiculos" },
 ];
 
 export default function Veiculos() {
   const navigate = useNavigate();
   const { rows, loading, insert, update } = useTable<Veiculo>("veiculos");
-  const { isAdmin } = useAuth();
+  const { isAdmin, perfil } = useAuth();
+  const [cnhUsuario, setCnhUsuario] = useState<string | null>(null);
+  useEffect(() => {
+    if (isAdmin || !perfil?.motorista_id) { setCnhUsuario(null); return; }
+    supabase.from("motoristas").select("cnh_categoria").eq("id", perfil.motorista_id).maybeSingle()
+      .then(({ data }) => setCnhUsuario((data as any)?.cnh_categoria ?? null));
+  }, [isAdmin, perfil?.motorista_id]);
   const [editing, setEditing] = useState<Veiculo | null>(null);
   const [busca, setBusca] = useState("");
   const [fStatus, setFStatus] = useState<string>("todos");
@@ -240,13 +249,14 @@ export default function Veiculos() {
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return rowsEfetivos.filter(v => {
+      if (!isAdmin && cnhUsuario != null && !cnhPermite(cnhUsuario, v.cnh_necessaria)) return false;
       if (q && !v.placa.toLowerCase().includes(q) && !v.modelo.toLowerCase().includes(q)) return false;
       if (fStatus !== "todos" && v.status !== fStatus) return false;
       if (fTipo !== "todos" && v.tipo !== fTipo) return false;
       if (fComb !== "todos" && v.combustivel !== fComb) return false;
       return true;
     });
-  }, [rowsEfetivos, busca, fStatus, fTipo, fComb]);
+  }, [rowsEfetivos, busca, fStatus, fTipo, fComb, isAdmin, cnhUsuario]);
 
   return (
     <>
