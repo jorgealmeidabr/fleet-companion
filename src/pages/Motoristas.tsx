@@ -37,7 +37,7 @@ const fields: FieldDef[] = [
 ];
 
 function diasRestantes(validade: string): number {
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const hoje = nowSP(); hoje.setHours(0, 0, 0, 0);
   const v = new Date(validade); v.setHours(0, 0, 0, 0);
   return Math.round((v.getTime() - hoje.getTime()) / 86400000);
 }

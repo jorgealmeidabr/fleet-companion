@@ -63,7 +63,7 @@ export default function Abastecimentos() {
 
   // KPIs do mês corrente
   const monthKpis = useMemo(() => {
-    const now = new Date();
+    const now = nowSP();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const monthRows = rows.filter(r => r.data?.startsWith(ym));
     const litros = monthRows.reduce((s, r) => s + Number(r.litros || 0), 0);

@@ -78,7 +78,7 @@ export default function Dashboard() {
   const emManutencao = veiculos.filter(v => statusEfetivo(v) === "manutencao").length;
   const inativos = veiculos.filter(v => statusEfetivo(v) === "inativo").length;
 
-  const now = new Date();
+  const now = nowSP();
   const ini = startOfMonth(now), fim = endOfMonth(now);
   const iniAnt = startOfMonth(subMonths(now, 1)), fimAnt = endOfMonth(subMonths(now, 1));
 

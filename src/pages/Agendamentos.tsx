@@ -450,7 +450,7 @@ export default function Agendamentos() {
               <Card className="shadow-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">
-                    Disponibilidade por horário em {selectedDay?.toLocaleDateString("pt-BR") ?? "—"}
+                    Disponibilidade por horário em {selectedDay?.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) ?? "—"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -731,7 +731,7 @@ export default function Agendamentos() {
               return (
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">
-                    Disponibilidade em {day.toLocaleDateString("pt-BR")}
+                    Disponibilidade em {day.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
                   </Label>
                   <HourTimeline
                     agendamentos={ags}
