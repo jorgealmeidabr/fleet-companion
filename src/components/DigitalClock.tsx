@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { nowSP } from "@/lib/format";
 
 const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -6,10 +7,10 @@ const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "O
 const pad = (n: number) => n.toString().padStart(2, "0");
 
 export function DigitalClock() {
-  const [now, setNow] = useState<Date>(() => new Date());
+  const [now, setNow] = useState<Date>(() => nowSP());
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const id = setInterval(() => setNow(nowSP()), 1000);
     return () => clearInterval(id);
   }, []);
 
