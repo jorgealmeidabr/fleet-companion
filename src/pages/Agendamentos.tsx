@@ -26,6 +26,7 @@ import { HourTimeline, suggestFreeSlots } from "@/components/HourTimeline";
 import { VeiculoChecklistStatus } from "@/components/VeiculoChecklistStatus";
 import { janelaOcupada } from "@/lib/agendamento";
 import { useVehicleAccess } from "@/hooks/useVehicleAccess";
+import { cnhPermite } from "@/lib/cnh";
 
 
 // Paleta determinística para colorir cada veículo no calendário
@@ -170,9 +171,17 @@ export default function Agendamentos() {
   // Mapas auxiliares
   const veiculoMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
   const motoristaMap = useMemo(() => Object.fromEntries(motoristas.map(m => [m.id, m])), [motoristas]);
+  const motoristaAtual = useMemo(
+    () => (perfil?.motorista_id ? motoristaMap[perfil.motorista_id] ?? null : null),
+    [motoristaMap, perfil?.motorista_id],
+  );
   const veiculosVisiveis = useMemo(
-    () => filterAllowed(veiculos, user?.id ?? null, isAdmin),
-    [veiculos, user?.id, isAdmin, filterAllowed],
+    () => {
+      const base = filterAllowed(veiculos, user?.id ?? null, isAdmin);
+      if (isAdmin || !motoristaAtual) return base;
+      return base.filter(v => cnhPermite(motoristaAtual.cnh_categoria, v.cnh_necessaria));
+    },
+    [veiculos, user?.id, isAdmin, filterAllowed, motoristaAtual],
   );
   const colorByVeiculo = useMemo(() => {
     const m: Record<string, string> = {};
