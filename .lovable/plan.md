@@ -1,75 +1,27 @@
-Execute o plano abaixo exatamente como descrito, **sem alterar layout, estilos, rotas, autenticação, componentes visuais ou** `Veiculos.tsx`.
+## Filtro por categoria de CNH em Veículos
 
----
+### O que muda
 
-**1. Migration SQL —** `supabase_setup/17_migration_v10_agendamentos_30min.sql` **(novo arquivo)**
+1) **Schema (banco):** adicionar coluna `cnh_necessaria` em `veiculos` com valores permitidos `'A' | 'B' | 'AB'`, default `'B'` (a maior parte da frota são carros). Backfill automático: motos → `'A'`, demais tipos → `'B'`.
 
-Reescrever a função `check_agendamento_conflito` usada pelo trigger `agendamentos_block_overlap` para calcular o fim da reserva existente como:
+2) **Tipo TS:** adicionar `cnh_necessaria: 'A' | 'B' | 'AB'` em `Veiculo` (`src/lib/types.ts`).
 
-sql
+3) **Form de cadastro/edição (`src/pages/Veiculos.tsx`):** adicionar campo select "CNH necessária" no `fields` (A / B / AB).
 
-```sql
-reserva_fim = COALESCE(data_retorno_real, data_saida + interval '30 minutes')
-```
+4) **Helper de compatibilidade (`src/lib/cnh.ts` novo):** função `cnhPermite(cnhUsuario, cnhVeiculo)` — extrai letras únicas da categoria do motorista (ex.: "AB", "AD", "ACC") e checa se contém a do veículo. Regra solicitada (A→moto, B→carro, AB→tudo) é caso particular dessa lógica.
 
-Isso permite criar novo agendamento após os 30min estimados, mesmo sem devolução física. Não alterar schema, policies nem outros triggers.
+5) **Listagem (`src/pages/Veiculos.tsx` e onde mais houver):** seguindo o padrão existente do `useVehicleAccess` (filterAllowed remove da lista), os veículos fora da categoria do usuário **não aparecem** para usuários comuns. Admin vê tudo. Implementação: após o `filterAllowed` atual, aplicar mais um filtro por CNH usando o `cnh_categoria` do motorista vinculado ao usuário logado (vem de `perfil.motorista_id` → tabela `motoristas`).
 
----
+6) **Reserva (`src/pages/Agendamentos.tsx`):** na criação do agendamento (e em "Iniciar uso"), validar antes de gravar. Se a CNH do motorista não cobrir `cnh_necessaria` do veículo, abortar com toast: `Sua habilitação categoria {X} não permite conduzir este veículo.`
 
-**2.** `src/pages/Agendamentos.tsx` **— apenas a função** `iniciarUso`
+### Arquivos
 
-Antes de prosseguir com o início do uso, consultar em tempo real se existe agendamento anterior do mesmo veículo ainda não devolvido:
+- `supabase_setup/18_migration_v11_cnh_necessaria.sql` (novo) — coluna + check + backfill.
+- `src/lib/types.ts` — campo no `Veiculo`.
+- `src/lib/cnh.ts` (novo) — `cnhPermite(...)`.
+- `src/pages/Veiculos.tsx` — campo no form + filtro extra na listagem.
+- `src/pages/Agendamentos.tsx` — filtro extra na lista de veículos selecionáveis + validação no submit do novo agendamento e no `iniciarUso`.
 
-ts
+### Não muda
 
-```ts
-const { data: pend } = await supabase
-  .from("agendamentos")
-  .select("id")
-  .eq("veiculo_id", a.veiculo_id)
-  .neq("id", a.id)
-  .is("data_retorno_real", null)
-  .in("status", ["ativo"])
-  .lt("data_saida", a.data_saida)
-  .limit(1);
-if (pend && pend.length > 0) {
-  toast({ title: "O outro condutor ainda não devolveu o veículo.", variant: "destructive" });
-  return;
-}
-```
-
-Somente após essa verificação prosseguir com o fluxo atual (`update km_atual` + toast). Não alterar devolução, cálculo de 30min nem nenhum outro trecho.
-
----
-
-**3.** `src/hooks/useTable.ts` **— polling de 10s**
-
-Dentro do hook, adicionar intervalo que chama `reload` a cada 10 segundos:
-
-ts
-
-```ts
-useEffect(() => {
-  reload();
-  const id = setInterval(reload, 10_000);
-  return () => clearInterval(id);
-}, [table]);
-```
-
-Não alterar a assinatura do hook nem criar novos componentes.
-
----
-
-**4.** `src/pages/Dashboard.tsx` **/** `src/pages/Index.tsx` **— polling de 10s**
-
-Adicionar `setInterval` de 10 segundos para refazer as queries existentes (sem reload de página). Não alterar layout nem lógica de exibição.
-
----
-
-**5.** `src/pages/VeiculoDetalhe.tsx`**,** `src/pages/MotoristaDetalhe.tsx`**,** `src/pages/AcidenteDetalhe.tsx` **— polling de 10s**
-
-Adicionar `setInterval` de 10 segundos para refazer as queries existentes de cada página. Não alterar layout nem lógica de exibição.
-
----
-
-`Veiculos.tsx` **não deve ser tocada** — já possui realtime + polling próprio de 15s.
+Estilos, rotas, layout, hooks de auth, RLS, demais validações, fluxo de devolução/checklist, `useVehicleAccess`, regra dos 30min, polling.
