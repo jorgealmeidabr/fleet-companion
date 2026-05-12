@@ -66,7 +66,7 @@ export interface AcidenteContato {
   created_at: string;
 }
 
-export interface Veiculo { id: string; placa: string; modelo: string; marca: string; ano: number; tipo: VeiculoTipo; combustivel: VeiculoCombustivel; km_atual: number; status: VeiculoStatus; foto_url: string | null; created_at: string; }
+export interface Veiculo { id: string; placa: string; modelo: string; marca: string; ano: number; tipo: VeiculoTipo; combustivel: VeiculoCombustivel; km_atual: number; status: VeiculoStatus; foto_url: string | null; cnh_necessaria: "A" | "B" | "AB"; created_at: string; }
 export interface Motorista { id: string; nome: string; cnh_numero: string; cnh_categoria: string; cnh_validade: string; telefone: string | null; email: string | null; cargo: string | null; status: MotoristaStatus; foto_url: string | null; user_id: string | null; created_at: string; }
 export interface Manutencao { id: string; veiculo_id: string; tipo: ManutencaoTipo; data: string; km_momento: number; descricao: string | null; pecas_trocadas: string | null; custo_total: number; oficina: string | null; proxima_km: number | null; proxima_data: string | null; status: ManutencaoStatus; created_at: string; }
 export interface Abastecimento { id: string; veiculo_id: string; motorista_id: string | null; data: string; km_atual: number; litros: number; valor_total: number; posto: string | null; consumo_km_l: number | null; custo_por_km: number | null; created_at: string; }
