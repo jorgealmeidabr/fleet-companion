@@ -268,6 +268,14 @@ export default function Agendamentos() {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
+    const motoristaSel = motoristaMap[form.motorista_id];
+    if (motoristaSel && !cnhPermite(motoristaSel.cnh_categoria, pickedVeiculo.cnh_necessaria)) {
+      toast({
+        title: `Sua habilitação categoria ${motoristaSel.cnh_categoria || "—"} não permite conduzir este veículo.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (conflito) {
       toast({
         title: conflito.tipo === "ordem" ? "Datas inválidas" : "Conflito de horário",
@@ -313,6 +321,15 @@ export default function Agendamentos() {
 
   // ---- Iniciar uso (sincroniza km_atual)
   const iniciarUso = async (a: Agendamento) => {
+    const v = veiculoMap[a.veiculo_id];
+    const m = motoristaMap[a.motorista_id];
+    if (v && m && !cnhPermite(m.cnh_categoria, v.cnh_necessaria)) {
+      toast({
+        title: `Sua habilitação categoria ${m.cnh_categoria || "—"} não permite conduzir este veículo.`,
+        variant: "destructive",
+      });
+      return;
+    }
     // Verifica em tempo real se há condutor anterior que ainda não devolveu
     const { data: pend } = await supabase
       .from("agendamentos")
