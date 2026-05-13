@@ -53,6 +53,23 @@ const fields: FieldDef[] = [
   { name: "cnh_necessaria", label: "CNH necessária", type: "select", required: true,
     options: [{ label: "A (motos)", value: "A" }, { label: "B (carros)", value: "B" }, { label: "AB (qualquer)", value: "AB" }] },
   { name: "foto_url", label: "Foto", type: "file", bucket: "veiculos" },
+  // ---- Documentação ----
+  { name: "renavam", label: "Renavam" },
+  { name: "chassi", label: "Chassi" },
+  { name: "numero_motor", label: "Número do motor" },
+  { name: "crlv_vencimento", label: "CRLV — vencimento", type: "date" },
+  { name: "ipva_valor", label: "IPVA — valor (R$)", type: "number", step: "0.01" },
+  { name: "ipva_status", label: "IPVA — status", type: "select",
+    options: [{ label: "Pendente", value: "pendente" }, { label: "Pago", value: "pago" }] },
+  { name: "ipva_vencimento", label: "IPVA — vencimento", type: "date" },
+  { name: "seguro_seguradora", label: "Seguro — seguradora" },
+  { name: "seguro_apolice", label: "Seguro — apólice" },
+  { name: "seguro_inicio", label: "Seguro — início", type: "date" },
+  { name: "seguro_fim", label: "Seguro — fim", type: "date" },
+  { name: "seguro_cobertura", label: "Seguro — cobertura", type: "textarea" },
+  { name: "inspecao_data", label: "Inspeção — última", type: "date" },
+  { name: "inspecao_proxima", label: "Inspeção — próxima", type: "date" },
+  { name: "rastreador_instalado", label: "Rastreador instalado", type: "checkbox" },
 ];
 
 export default function Veiculos() {
