@@ -95,8 +95,9 @@ export default function Manutencoes() {
               <Download className="mr-1 h-4 w-4" />Exportar CSV
             </Button>
             {isAdmin && (
-              <FormDialog<Manutencao>
-                title="Nova manutenção" fields={fields} onSubmit={insert}
+              <ManutencaoFormDialog
+                veiculos={veiculos}
+                onSubmit={insert}
                 trigger={<Button variant="brand"><Plus className="mr-1 h-4 w-4" />Nova manutenção</Button>}
               />
             )}
