@@ -49,22 +49,8 @@ export default function Manutencoes() {
 
   useEffect(() => { supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[])); }, []);
 
-  const fields: FieldDef[] = useMemo(() => [
-    { name: "veiculo_id", label: "Veículo", type: "select", required: true,
-      options: veiculos.map(v => ({ value: v.id, label: `${v.placa} – ${v.marca} ${v.modelo}` })) },
-    { name: "tipo", label: "Tipo", type: "select", required: true,
-      options: [{ label: "Preventiva", value: "preventiva" }, { label: "Corretiva", value: "corretiva" }] },
-    { name: "data", label: "Data", type: "date", required: true },
-    { name: "km_momento", label: "Km no momento", type: "number", required: true },
-    { name: "descricao", label: "Descrição", type: "textarea" },
-    { name: "pecas_trocadas", label: "Peças trocadas", type: "textarea" },
-    { name: "custo_total", label: "Custo total (R$)", type: "number", step: "0.01", required: true },
-    { name: "oficina", label: "Oficina" },
-    { name: "proxima_km", label: "Próxima manutenção (km)", type: "number" },
-    { name: "proxima_data", label: "Próxima manutenção (data)", type: "date" },
-    { name: "status", label: "Status", type: "select", required: true,
-      options: [{ label: "Agendada", value: "agendada" }, { label: "Em andamento", value: "em_andamento" }, { label: "Concluída", value: "concluida" }] },
-  ], [veiculos]);
+  // Form moved to <ManutencaoFormDialog />
+
 
   const veicMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
 
