@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { FormDialog, FieldDef } from "@/components/FormDialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,19 @@ import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Money } from "@/components/Money";
+import { ManutencaoFormDialog } from "@/components/ManutencaoFormDialog";
+
+const TIPO_BADGE: Record<string, string> = {
+  preventiva: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  corretiva: "bg-red-500/15 text-red-400 border-red-500/30",
+  preditiva: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+};
+const PRIO_BADGE: Record<string, string> = {
+  baixa: "bg-muted text-muted-foreground border-border",
+  media: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  alta: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  urgente: "bg-red-500/15 text-red-400 border-red-500/30",
+};
 
 export default function Manutencoes() {
   const { rows, loading, insert, update, remove } = useTable<Manutencao>("manutencoes");
