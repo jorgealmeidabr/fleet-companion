@@ -291,8 +291,66 @@ export default function Dashboard() {
             })()}
           </CardContent>
         </Card>
-      </div>
-      </ErrorBoundary>
+
+        <Card className="shadow-card lg:col-span-3">
+          <CardHeader><CardTitle className="text-base">Próximas manutenções</CardTitle></CardHeader>
+          <CardContent>
+            {(() => {
+              const veicMap = Object.fromEntries(veiculos.map(v => [v.id, v]));
+              type Prox = { id: string; titulo: string; tipo: string; diasRest: number | null; kmRest: number | null; urg: number };
+              const items: Prox[] = [];
+              manutencoes.forEach(m => {
+                if (m.status === "concluida") return;
+                const v = veicMap[m.veiculo_id];
+                if (!v) return;
+                const proxKm = (m as any).km_proxima_manutencao ?? m.proxima_km;
+                const proxData = (m as any).data_proxima_manutencao ?? m.proxima_data;
+                let diasRest: number | null = null;
+                let kmRest: number | null = null;
+                if (proxData) diasRest = Math.ceil((new Date(proxData).getTime() - now.getTime()) / 86_400_000);
+                if (proxKm != null) kmRest = proxKm - v.km_atual;
+                const passaKm = kmRest != null && kmRest <= 1000;
+                const passaData = diasRest != null && diasRest <= 30;
+                if (!passaKm && !passaData) return;
+                // Urgência: menor é mais urgente. Combina km e dias normalizados.
+                const urg = Math.min(
+                  kmRest != null ? kmRest : Number.POSITIVE_INFINITY,
+                  diasRest != null ? diasRest * 50 : Number.POSITIVE_INFINITY,
+                );
+                items.push({
+                  id: m.id,
+                  titulo: `${v.placa} – ${v.marca} ${v.modelo}`,
+                  tipo: (m as any).subtipo ? `${m.tipo} · ${String((m as any).subtipo).replace(/_/g, " ")}` : m.tipo,
+                  diasRest, kmRest, urg,
+                });
+              });
+              items.sort((a, b) => a.urg - b.urg);
+              if (items.length === 0) return <p className="text-sm text-muted-foreground">Nenhuma manutenção próxima do limite (1.000 km ou 30 dias).</p>;
+              return (
+                <div className="divide-y divide-border">
+                  {items.map(it => {
+                    const critico = (it.kmRest != null && it.kmRest <= 0) || (it.diasRest != null && it.diasRest <= 0);
+                    const cls = critico
+                      ? "bg-red-500/15 text-red-400 border-red-500/30"
+                      : "bg-amber-500/15 text-amber-400 border-amber-500/30";
+                    const partes: string[] = [];
+                    if (it.kmRest != null) partes.push(it.kmRest <= 0 ? `${Math.abs(it.kmRest)} km vencido` : `${fmtNumber(it.kmRest)} km restantes`);
+                    if (it.diasRest != null) partes.push(it.diasRest <= 0 ? `${Math.abs(it.diasRest)}d vencido` : `${it.diasRest}d restantes`);
+                    return (
+                      <div key={it.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{it.titulo}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{it.tipo}</p>
+                        </div>
+                        <Badge variant="outline" className={cls}>{partes.join(" · ")}</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
 
       <DashboardHistorico />
     </>
