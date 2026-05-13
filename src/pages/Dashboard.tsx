@@ -240,6 +240,57 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="shadow-card lg:col-span-3">
+          <CardHeader><CardTitle className="text-base">Documentos vencendo (próximos 60 dias)</CardTitle></CardHeader>
+          <CardContent>
+            {(() => {
+              type DocVenc = { vid: string; placa: string; titulo: string; tipo: string; dias: number; pendente: boolean };
+              const items: DocVenc[] = [];
+              const calcDias = (d?: string | null) => d ? Math.ceil((new Date(d).getTime() - now.getTime()) / 86_400_000) : null;
+              veiculos.forEach(v => {
+                const titulo = `${v.placa} – ${v.marca} ${v.modelo}`;
+                const docs: Array<[string, string | null | undefined, boolean]> = [
+                  ["CRLV", v.crlv_vencimento, false],
+                  ["IPVA", v.ipva_vencimento, v.ipva_status === "pendente"],
+                  ["Seguro", v.seguro_fim, false],
+                  ["Inspeção", v.inspecao_proxima, false],
+                ];
+                docs.forEach(([tipo, data, pend]) => {
+                  const dias = calcDias(data);
+                  if (pend && dias != null) {
+                    items.push({ vid: v.id, placa: v.placa, titulo, tipo, dias, pendente: true });
+                  } else if (dias != null && dias <= 60) {
+                    items.push({ vid: v.id, placa: v.placa, titulo, tipo, dias, pendente: false });
+                  }
+                });
+              });
+              items.sort((a, b) => a.dias - b.dias);
+              if (items.length === 0) return <p className="text-sm text-muted-foreground">Nenhum documento vencendo nos próximos 60 dias.</p>;
+              return (
+                <div className="divide-y divide-border">
+                  {items.map((it, i) => {
+                    const cls = it.pendente || it.dias < 0
+                      ? "bg-red-500/15 text-red-400 border-red-500/30"
+                      : it.dias <= 30
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                        : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+                    const label = it.pendente ? "Pendente" : it.dias < 0 ? `Vencido há ${Math.abs(it.dias)}d` : `${it.dias}d restantes`;
+                    return (
+                      <div key={`${it.vid}-${it.tipo}-${i}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{it.titulo}</p>
+                          <p className="text-xs text-muted-foreground">{it.tipo}</p>
+                        </div>
+                        <Badge variant="outline" className={cls}>{label}</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
       </div>
       </ErrorBoundary>
 
