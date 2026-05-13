@@ -345,3 +345,117 @@ function ListaSimples({
     </Card>
   );
 }
+
+// ====== Documentação Veicular ======
+type DocStatus = { label: string; classe: string };
+function statusPorData(dataISO?: string | null, pendente = false): DocStatus {
+  if (pendente) return { label: "Pendente", classe: "bg-red-500/15 text-red-400 border-red-500/30" };
+  if (!dataISO) return { label: "Não informado", classe: "bg-muted text-muted-foreground border-border" };
+  const dias = Math.ceil((new Date(dataISO).getTime() - nowSP().getTime()) / 86_400_000);
+  if (dias < 0) return { label: `Vencido há ${Math.abs(dias)}d`, classe: "bg-red-500/15 text-red-400 border-red-500/30" };
+  if (dias <= 60) return { label: `Vence em ${dias}d`, classe: "bg-amber-500/15 text-amber-400 border-amber-500/30" };
+  return { label: `Vence em ${dias}d`, classe: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
+}
+
+function DocCard({ icon, titulo, vencimento, status, extra }: {
+  icon: React.ReactNode; titulo: string; vencimento?: string | null; status: DocStatus; extra?: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardContent className="space-y-2 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <span className="text-amber-400">{icon}</span>
+            {titulo}
+          </div>
+          <Badge variant="outline" className={status.classe}>{status.label}</Badge>
+        </div>
+        {vencimento !== undefined && (
+          <p className="text-xs text-muted-foreground">Vencimento: <span className="font-medium text-foreground">{fmtDate(vencimento)}</span></p>
+        )}
+        {extra}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DocumentacaoSection({ veiculo }: { veiculo: Veiculo }) {
+  const ipvaPendente = veiculo.ipva_status === "pendente";
+  return (
+    <Card className="mb-6 shadow-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <FileText className="h-4 w-4 text-amber-400" />
+          Documentação
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <DocCard
+            icon={<FileText className="h-4 w-4" />}
+            titulo="CRLV"
+            vencimento={veiculo.crlv_vencimento}
+            status={statusPorData(veiculo.crlv_vencimento)}
+          />
+          <DocCard
+            icon={<Receipt className="h-4 w-4" />}
+            titulo="IPVA"
+            vencimento={veiculo.ipva_vencimento}
+            status={statusPorData(veiculo.ipva_vencimento, ipvaPendente)}
+            extra={
+              <p className="text-xs text-muted-foreground">
+                {veiculo.ipva_valor != null ? <>Valor: <span className="font-medium text-foreground">{fmtBRL(Number(veiculo.ipva_valor))}</span> · </> : null}
+                Status: <span className={`font-medium ${ipvaPendente ? "text-red-400" : "text-emerald-400"}`}>{veiculo.ipva_status ?? "—"}</span>
+              </p>
+            }
+          />
+          <DocCard
+            icon={<ShieldCheck className="h-4 w-4" />}
+            titulo="Seguro"
+            vencimento={veiculo.seguro_fim}
+            status={statusPorData(veiculo.seguro_fim)}
+            extra={
+              <div className="space-y-0.5 text-xs text-muted-foreground">
+                {veiculo.seguro_seguradora && <p>Seguradora: <span className="font-medium text-foreground">{veiculo.seguro_seguradora}</span></p>}
+                {veiculo.seguro_apolice && <p>Apólice: <span className="font-mono text-foreground">{veiculo.seguro_apolice}</span></p>}
+                {veiculo.seguro_cobertura && <p className="line-clamp-2">Cobertura: {veiculo.seguro_cobertura}</p>}
+              </div>
+            }
+          />
+          <DocCard
+            icon={<SearchIcon className="h-4 w-4" />}
+            titulo="Inspeção veicular"
+            vencimento={veiculo.inspecao_proxima}
+            status={statusPorData(veiculo.inspecao_proxima)}
+            extra={veiculo.inspecao_data ? <p className="text-xs text-muted-foreground">Última: <span className="font-medium text-foreground">{fmtDate(veiculo.inspecao_data)}</span></p> : null}
+          />
+          <Card>
+            <CardContent className="space-y-2 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Radio className="h-4 w-4 text-amber-400" />
+                  Rastreador
+                </div>
+                <Badge variant="outline" className={veiculo.rastreador_instalado
+                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                  : "bg-muted text-muted-foreground border-border"}>
+                  {veiculo.rastreador_instalado ? "Instalado" : "Não instalado"}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {(veiculo.renavam || veiculo.chassi || veiculo.numero_motor) && (
+          <Card>
+            <CardContent className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 text-sm">
+              <div><p className="text-xs text-muted-foreground">Renavam</p><p className="font-mono font-medium">{veiculo.renavam ?? "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">Chassi</p><p className="font-mono font-medium">{veiculo.chassi ?? "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">Nº do motor</p><p className="font-mono font-medium">{veiculo.numero_motor ?? "—"}</p></div>
+            </CardContent>
+          </Card>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
