@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { FormDialog, FieldDef } from "@/components/FormDialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,19 @@ import { EmptyState } from "@/components/EmptyState";
 import { CardGridSkeleton } from "@/components/Skeletons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Money } from "@/components/Money";
+import { ManutencaoFormDialog } from "@/components/ManutencaoFormDialog";
+
+const TIPO_BADGE: Record<string, string> = {
+  preventiva: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  corretiva: "bg-red-500/15 text-red-400 border-red-500/30",
+  preditiva: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+};
+const PRIO_BADGE: Record<string, string> = {
+  baixa: "bg-muted text-muted-foreground border-border",
+  media: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  alta: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  urgente: "bg-red-500/15 text-red-400 border-red-500/30",
+};
 
 export default function Manutencoes() {
   const { rows, loading, insert, update, remove } = useTable<Manutencao>("manutencoes");
@@ -36,22 +49,8 @@ export default function Manutencoes() {
 
   useEffect(() => { supabase.from("veiculos").select("*").then(({ data }) => setVeiculos((data ?? []) as Veiculo[])); }, []);
 
-  const fields: FieldDef[] = useMemo(() => [
-    { name: "veiculo_id", label: "Veículo", type: "select", required: true,
-      options: veiculos.map(v => ({ value: v.id, label: `${v.placa} – ${v.marca} ${v.modelo}` })) },
-    { name: "tipo", label: "Tipo", type: "select", required: true,
-      options: [{ label: "Preventiva", value: "preventiva" }, { label: "Corretiva", value: "corretiva" }] },
-    { name: "data", label: "Data", type: "date", required: true },
-    { name: "km_momento", label: "Km no momento", type: "number", required: true },
-    { name: "descricao", label: "Descrição", type: "textarea" },
-    { name: "pecas_trocadas", label: "Peças trocadas", type: "textarea" },
-    { name: "custo_total", label: "Custo total (R$)", type: "number", step: "0.01", required: true },
-    { name: "oficina", label: "Oficina" },
-    { name: "proxima_km", label: "Próxima manutenção (km)", type: "number" },
-    { name: "proxima_data", label: "Próxima manutenção (data)", type: "date" },
-    { name: "status", label: "Status", type: "select", required: true,
-      options: [{ label: "Agendada", value: "agendada" }, { label: "Em andamento", value: "em_andamento" }, { label: "Concluída", value: "concluida" }] },
-  ], [veiculos]);
+  // Form moved to <ManutencaoFormDialog />
+
 
   const veicMap = useMemo(() => Object.fromEntries(veiculos.map(v => [v.id, v])), [veiculos]);
 
@@ -72,8 +71,10 @@ export default function Manutencoes() {
     if (m.status === "concluida") return false;
     const v = veicMap[m.veiculo_id];
     const hoje = new Date().toISOString().slice(0, 10);
-    if (m.proxima_data && hoje > m.proxima_data) return true;
-    if (m.proxima_km && v && v.km_atual > m.proxima_km) return true;
+    const proxData = m.data_proxima_manutencao ?? m.proxima_data;
+    const proxKm = m.km_proxima_manutencao ?? m.proxima_km;
+    if (proxData && hoje > proxData) return true;
+    if (proxKm && v && v.km_atual > proxKm) return true;
     return false;
   };
 
@@ -96,8 +97,9 @@ export default function Manutencoes() {
               <Download className="mr-1 h-4 w-4" />Exportar CSV
             </Button>
             {isAdmin && (
-              <FormDialog<Manutencao>
-                title="Nova manutenção" fields={fields} onSubmit={insert}
+              <ManutencaoFormDialog
+                veiculos={veiculos}
+                onSubmit={insert}
                 trigger={<Button variant="brand"><Plus className="mr-1 h-4 w-4" />Nova manutenção</Button>}
               />
             )}
@@ -112,6 +114,7 @@ export default function Manutencoes() {
             <SelectItem value="todos">Todos tipos</SelectItem>
             <SelectItem value="preventiva">Preventiva</SelectItem>
             <SelectItem value="corretiva">Corretiva</SelectItem>
+            <SelectItem value="preditiva">Preditiva</SelectItem>
           </SelectContent>
         </Select>
         <Select value={fStatus} onValueChange={setFStatus}>
@@ -188,16 +191,31 @@ export default function Manutencoes() {
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline" className={TIPO_BADGE[m.tipo] ?? ""}>{m.tipo}</Badge>
+                    {m.prioridade && (
+                      <Badge variant="outline" className={PRIO_BADGE[m.prioridade] ?? ""}>Prioridade: {m.prioridade}</Badge>
+                    )}
+                    {m.subtipo && (
+                      <Badge variant="outline" className="border-border bg-muted/40 text-muted-foreground">
+                        {String(m.subtipo).replace(/_/g, " ")}
+                      </Badge>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div><p className="text-xs text-muted-foreground">Data</p><p className="font-medium">{fmtDate(m.data)}</p></div>
                     <div><p className="text-xs text-muted-foreground">Custo</p><p className="font-semibold"><Money value={Number(m.custo_total)} /></p></div>
+                    <div><p className="text-xs text-muted-foreground">Km da manutenção</p><p className="font-medium">{m.km_momento != null ? `${fmtNumber(m.km_momento)} km` : "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Tempo parado</p><p className="font-medium">{m.tempo_parado_horas != null ? `${m.tempo_parado_horas}h` : "—"}</p></div>
                     <div className="col-span-2"><p className="text-xs text-muted-foreground">Oficina</p><p className="font-medium">{m.oficina ?? "—"}</p></div>
                     {m.descricao && <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="line-clamp-2 text-muted-foreground">{m.descricao}</p></div>}
                   </div>
 
-                  {(m.proxima_km || m.proxima_data) && (
+                  {(m.km_proxima_manutencao || m.data_proxima_manutencao || m.proxima_km || m.proxima_data) && (
                     <div className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
-                      Próxima: {m.proxima_km ? `${fmtNumber(m.proxima_km)} km` : "—"} {m.proxima_data && `· ${fmtDate(m.proxima_data)}`}
+                      Próxima: {(m.km_proxima_manutencao ?? m.proxima_km) ? `${fmtNumber((m.km_proxima_manutencao ?? m.proxima_km)!)} km` : "—"}
+                      {(m.data_proxima_manutencao ?? m.proxima_data) && ` · ${fmtDate(m.data_proxima_manutencao ?? m.proxima_data)}`}
                     </div>
                   )}
 
@@ -214,8 +232,10 @@ export default function Manutencoes() {
       )}
 
       {editing && (
-        <FormDialog<Manutencao>
-          title="Editar manutenção" fields={fields} initial={editing} open
+        <ManutencaoFormDialog
+          veiculos={veiculos}
+          initial={editing}
+          open
           onOpenChange={(o) => !o && setEditing(null)}
           onSubmit={(v) => update(editing.id, v)}
         />

@@ -3,8 +3,11 @@ export type VeiculoTipo = "carro" | "moto" | "caminhao" | "van";
 export type VeiculoCombustivel = "flex" | "gasolina" | "diesel" | "eletrico";
 export type VeiculoStatus = "disponivel" | "manutencao" | "inativo" | "reservado";
 export type MotoristaStatus = "ativo" | "inativo";
-export type ManutencaoTipo = "preventiva" | "corretiva";
+export type ManutencaoTipo = "preventiva" | "corretiva" | "preditiva";
 export type ManutencaoStatus = "agendada" | "em_andamento" | "concluida";
+export type ManutencaoSubtipo = "troca_oleo" | "filtro" | "correia" | "freio" | "pneu" | "alinhamento" | "revisao_geral" | "outro";
+export type ManutencaoPrioridade = "baixa" | "media" | "alta" | "urgente";
+export interface ManutencaoPeca { nome: string; quantidade: number; valor_unitario: number; garantia_dias?: number | null; }
 export type ChecklistStatus = "ok" | "problema";
 export type AgendamentoStatus = "ativo" | "cancelado" | "agendado" | "em_uso" | "concluido";
 export type MultaStatus = "pendente" | "pago" | "contestado";
@@ -89,7 +92,20 @@ export interface Veiculo {
   rastreador_instalado?: boolean | null;
 }
 export interface Motorista { id: string; nome: string; cnh_numero: string; cnh_categoria: string; cnh_validade: string; telefone: string | null; email: string | null; cargo: string | null; status: MotoristaStatus; foto_url: string | null; user_id: string | null; created_at: string; }
-export interface Manutencao { id: string; veiculo_id: string; tipo: ManutencaoTipo; data: string; km_momento: number; descricao: string | null; pecas_trocadas: string | null; custo_total: number; oficina: string | null; proxima_km: number | null; proxima_data: string | null; status: ManutencaoStatus; created_at: string; }
+export interface Manutencao {
+  id: string; veiculo_id: string; tipo: ManutencaoTipo; data: string;
+  km_momento: number; descricao: string | null; pecas_trocadas: string | null;
+  custo_total: number; oficina: string | null;
+  proxima_km: number | null; proxima_data: string | null;
+  status: ManutencaoStatus; created_at: string;
+  subtipo?: ManutencaoSubtipo | null;
+  km_atual?: number | null;
+  km_proxima_manutencao?: number | null;
+  data_proxima_manutencao?: string | null;
+  tempo_parado_horas?: number | null;
+  prioridade?: ManutencaoPrioridade | null;
+  pecas?: ManutencaoPeca[] | null;
+}
 export interface Abastecimento { id: string; veiculo_id: string; motorista_id: string | null; data: string; km_atual: number; litros: number; valor_total: number; posto: string | null; consumo_km_l: number | null; custo_por_km: number | null; created_at: string; }
 export interface Checklist { id: string; veiculo_id: string; motorista_id: string | null; data: string; pneus_ok: boolean; luzes_ok: boolean; combustivel_ok: boolean; nivel_oleo_ok: boolean; observacoes: string | null; fotos_urls: string[] | null; status: ChecklistStatus; created_at: string; }
 export interface Agendamento { id: string; veiculo_id: string; motorista_id: string; data_saida: string; data_retorno_prevista: string; data_retorno_real: string | null; destino: string | null; km_saida: number | null; km_retorno: number | null; status: AgendamentoStatus; observacoes: string | null; created_at: string; }
