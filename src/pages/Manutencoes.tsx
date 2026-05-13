@@ -188,16 +188,31 @@ export default function Manutencoes() {
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline" className={TIPO_BADGE[m.tipo] ?? ""}>{m.tipo}</Badge>
+                    {m.prioridade && (
+                      <Badge variant="outline" className={PRIO_BADGE[m.prioridade] ?? ""}>Prioridade: {m.prioridade}</Badge>
+                    )}
+                    {m.subtipo && (
+                      <Badge variant="outline" className="border-border bg-muted/40 text-muted-foreground">
+                        {String(m.subtipo).replace(/_/g, " ")}
+                      </Badge>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div><p className="text-xs text-muted-foreground">Data</p><p className="font-medium">{fmtDate(m.data)}</p></div>
                     <div><p className="text-xs text-muted-foreground">Custo</p><p className="font-semibold"><Money value={Number(m.custo_total)} /></p></div>
+                    <div><p className="text-xs text-muted-foreground">Km da manutenção</p><p className="font-medium">{m.km_momento != null ? `${fmtNumber(m.km_momento)} km` : "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Tempo parado</p><p className="font-medium">{m.tempo_parado_horas != null ? `${m.tempo_parado_horas}h` : "—"}</p></div>
                     <div className="col-span-2"><p className="text-xs text-muted-foreground">Oficina</p><p className="font-medium">{m.oficina ?? "—"}</p></div>
                     {m.descricao && <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="line-clamp-2 text-muted-foreground">{m.descricao}</p></div>}
                   </div>
 
-                  {(m.proxima_km || m.proxima_data) && (
+                  {(m.km_proxima_manutencao || m.data_proxima_manutencao || m.proxima_km || m.proxima_data) && (
                     <div className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
-                      Próxima: {m.proxima_km ? `${fmtNumber(m.proxima_km)} km` : "—"} {m.proxima_data && `· ${fmtDate(m.proxima_data)}`}
+                      Próxima: {(m.km_proxima_manutencao ?? m.proxima_km) ? `${fmtNumber((m.km_proxima_manutencao ?? m.proxima_km)!)} km` : "—"}
+                      {(m.data_proxima_manutencao ?? m.proxima_data) && ` · ${fmtDate(m.data_proxima_manutencao ?? m.proxima_data)}`}
                     </div>
                   )}
 
