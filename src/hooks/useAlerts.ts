@@ -161,6 +161,43 @@ export function useAlerts() {
       });
     });
 
+    // Documentos veiculares (CRLV, IPVA, Seguro, Inspeção) — críticos se vencidos ou ≤30d
+    veiculos.forEach(v => {
+      const checaDoc = (idSuffix: string, tipo: string, dataISO?: string | null, pendente = false) => {
+        if (!dataISO && !pendente) return;
+        const dias = dataISO ? Math.ceil((new Date(dataISO).getTime() - now) / DAY) : null;
+        if (pendente) {
+          out.push({
+            id: `doc-${idSuffix}-${v.id}`, level: "critico", tipo: "Documento",
+            titulo: `${tipo} pendente — ${v.placa}`,
+            descricao: dataISO ? `Vence em ${new Date(dataISO).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : "Pagamento pendente",
+            veiculoId: v.id, link: `/veiculos/${v.id}`,
+          });
+          return;
+        }
+        if (dias == null) return;
+        if (dias < 0) {
+          out.push({
+            id: `doc-${idSuffix}-${v.id}`, level: "critico", tipo: "Documento",
+            titulo: `${tipo} vencido — ${v.placa}`,
+            descricao: `Vencido há ${Math.abs(dias)} dias`,
+            veiculoId: v.id, link: `/veiculos/${v.id}`,
+          });
+        } else if (dias <= 30) {
+          out.push({
+            id: `doc-${idSuffix}-${v.id}`, level: "critico", tipo: "Documento",
+            titulo: `${tipo} vence em breve — ${v.placa}`,
+            descricao: `Vence em ${dias} dias`,
+            veiculoId: v.id, link: `/veiculos/${v.id}`,
+          });
+        }
+      };
+      checaDoc("crlv", "CRLV", (v as any).crlv_vencimento);
+      checaDoc("ipva", "IPVA", (v as any).ipva_vencimento, (v as any).ipva_status === "pendente");
+      checaDoc("seguro", "Seguro", (v as any).seguro_fim);
+      checaDoc("inspecao", "Inspeção", (v as any).inspecao_proxima);
+    });
+
     const order: Record<AlertLevel, number> = { critico: 0, atencao: 1, info: 2 };
     return out
       .filter(a => !isDismissed(a.id))
