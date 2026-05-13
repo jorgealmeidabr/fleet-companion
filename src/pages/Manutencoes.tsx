@@ -214,8 +214,10 @@ export default function Manutencoes() {
       )}
 
       {editing && (
-        <FormDialog<Manutencao>
-          title="Editar manutenção" fields={fields} initial={editing} open
+        <ManutencaoFormDialog
+          veiculos={veiculos}
+          initial={editing}
+          open
           onOpenChange={(o) => !o && setEditing(null)}
           onSubmit={(v) => update(editing.id, v)}
         />
