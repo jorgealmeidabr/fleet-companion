@@ -71,8 +71,10 @@ export default function Manutencoes() {
     if (m.status === "concluida") return false;
     const v = veicMap[m.veiculo_id];
     const hoje = new Date().toISOString().slice(0, 10);
-    if (m.proxima_data && hoje > m.proxima_data) return true;
-    if (m.proxima_km && v && v.km_atual > m.proxima_km) return true;
+    const proxData = m.data_proxima_manutencao ?? m.proxima_data;
+    const proxKm = m.km_proxima_manutencao ?? m.proxima_km;
+    if (proxData && hoje > proxData) return true;
+    if (proxKm && v && v.km_atual > proxKm) return true;
     return false;
   };
 
@@ -112,6 +114,7 @@ export default function Manutencoes() {
             <SelectItem value="todos">Todos tipos</SelectItem>
             <SelectItem value="preventiva">Preventiva</SelectItem>
             <SelectItem value="corretiva">Corretiva</SelectItem>
+            <SelectItem value="preditiva">Preditiva</SelectItem>
           </SelectContent>
         </Select>
         <Select value={fStatus} onValueChange={setFStatus}>
