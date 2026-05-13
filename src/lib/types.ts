@@ -3,8 +3,11 @@ export type VeiculoTipo = "carro" | "moto" | "caminhao" | "van";
 export type VeiculoCombustivel = "flex" | "gasolina" | "diesel" | "eletrico";
 export type VeiculoStatus = "disponivel" | "manutencao" | "inativo" | "reservado";
 export type MotoristaStatus = "ativo" | "inativo";
-export type ManutencaoTipo = "preventiva" | "corretiva";
+export type ManutencaoTipo = "preventiva" | "corretiva" | "preditiva";
 export type ManutencaoStatus = "agendada" | "em_andamento" | "concluida";
+export type ManutencaoSubtipo = "troca_oleo" | "filtro" | "correia" | "freio" | "pneu" | "alinhamento" | "revisao_geral" | "outro";
+export type ManutencaoPrioridade = "baixa" | "media" | "alta" | "urgente";
+export interface ManutencaoPeca { nome: string; quantidade: number; valor_unitario: number; garantia_dias?: number | null; }
 export type ChecklistStatus = "ok" | "problema";
 export type AgendamentoStatus = "ativo" | "cancelado" | "agendado" | "em_uso" | "concluido";
 export type MultaStatus = "pendente" | "pago" | "contestado";
