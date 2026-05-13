@@ -187,6 +187,8 @@ export default function VeiculoDetalhe() {
         </div>
       </div>
 
+      <DocumentacaoSection veiculo={veiculo} />
+
       {isAdmin && (
         <Card className="mb-6 shadow-card">
           <CardHeader className="pb-3">
