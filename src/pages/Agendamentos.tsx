@@ -832,24 +832,7 @@ export default function Agendamentos() {
           {returning && (() => {
             const kmSaida = returning.km_saida ?? 0;
             const kmRetorno = retForm.km_retorno;
-            const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno < kmSaida;
-            return (
-            <>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Veículo <span className="font-mono font-medium text-foreground">{veiculoMap[returning.veiculo_id]?.placa}</span> •
-                Km saída: {fmtNumber(kmSaida)}
-              </p>
-              <div className="space-y-1.5">
-                <Label>Km de retorno (hodômetro) *</Label>
-                <Input
-                  type="number"
-                  placeholder="Informe o KM atual"
-                  value={retForm.km_retorno ?? ""}
-                  onChange={(e) => setRetForm(s => ({ ...s, km_retorno: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                  aria-invalid={kmInvalido}
-                  className={kmInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
-                />
+            const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno <= kmSaida;
             const kmAtualVeic = veiculoMap[returning.veiculo_id]?.km_atual ?? 0;
             const kmAbaixoAtual = kmRetorno != null && kmRetorno < kmAtualVeic;
             const litrosInvalido = retForm.litros_abastecidos != null && retForm.litros_abastecidos <= 0;
