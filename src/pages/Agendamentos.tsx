@@ -829,10 +829,7 @@ export default function Agendamentos() {
             const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno <= kmSaida;
             const kmAtualVeic = veiculoMap[returning.veiculo_id]?.km_atual ?? 0;
             const kmAbaixoAtual = kmRetorno != null && kmRetorno < kmAtualVeic;
-            const litrosInvalido = retForm.litros_abastecidos != null && retForm.litros_abastecidos <= 0;
             const distanciaPrev = kmRetorno != null && kmRetorno > kmSaida ? kmRetorno - kmSaida : null;
-            const kmlPrev = distanciaPrev != null && retForm.litros_abastecidos && retForm.litros_abastecidos > 0
-              ? (distanciaPrev / retForm.litros_abastecidos) : null;
             return (
             <>
             <div className="space-y-3">
