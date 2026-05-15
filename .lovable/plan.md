@@ -1,76 +1,56 @@
-# Módulo de Documentação Veicular
+## Objetivo
 
-Adicionar gestão de documentos (CRLV, IPVA, seguro, inspeção, rastreador) sem alterar telas/funcionalidades fora do escopo definido.
+Corrigir e formalizar o cálculo de KM/L por utilização do veículo (tabela `agendamentos`) e a média de consumo do veículo, garantindo consistência via banco de dados e validações no frontend.
 
-## 1. Banco de dados
+## 1. Banco de dados — `21_migration_v14_consumo_kml.sql` (novo)
 
-Nova migration `supabase_setup/19_migration_v12_documentacao_veicular.sql` adicionando à tabela `veiculos`:
+Adicionar colunas:
 
-- `renavam text`
-- `chassi text`
-- `numero_motor text`
-- `crlv_vencimento date`
-- `ipva_valor numeric(12,2)`
-- `ipva_status text` (check `in ('pago','pendente')`, default `'pendente'`)
-- `ipva_vencimento date`
-- `seguro_seguradora text`
-- `seguro_apolice text`
-- `seguro_inicio date`
-- `seguro_fim date`
-- `seguro_cobertura text`
-- `inspecao_data date`
-- `inspecao_proxima date`
-- &nbsp;
+- `veiculos.km_inicial int` (preenchido com `km_atual` atual no momento da migration; default 0)
+- `veiculos.consumo_medio_kml numeric(10,2)` (default null)
+- `agendamentos.litros_abastecidos numeric(10,2)` (null)
+- `agendamentos.km_l numeric(10,2)` (calculado por trigger; null se inválido)
 
-Atualizar `src/lib/types.ts` → interface `Veiculo` com os novos campos (todos opcionais/nullable).
+Trigger `trg_calc_agendamento_consumo` em `agendamentos` (BEFORE INSERT/UPDATE):
 
-## 2. Tela Detalhe do Veículo (`src/pages/VeiculoDetalhe.tsx`)
+- Se `km_retorno`, `km_saida` e `litros_abastecidos` válidos (`km_retorno > km_saida`, `litros_abastecidos > 0`), calcula `km_l = round((km_retorno - km_saida) / litros_abastecidos, 2)`.
+- Caso contrário, `km_l = null`.
 
-Adicionar nova seção "Documentação" (entre o bloco de KPIs/foto e o card "Uso restrito"), apenas para visualização. Layout em grid de cards (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3`), cada card mostrando:
+Trigger `trg_sync_veiculo_apos_agendamento` em `agendamentos` (AFTER INSERT/UPDATE/DELETE):
 
-- Nome do documento
-- Data de vencimento (`fmtDate`)
-- Badge colorido de status:
-  - **Verde** (`bg-emerald-500/15 text-emerald-400`) — vence em > 60 dias
-  - **Amarelo** (`bg-amber-500/15 text-amber-400`, acento `#F59E0B`) — vence em ≤ 60 dias
-  - **Vermelho** (`bg-red-500/15 text-red-400`) — vencido ou status pendente
+- Recalcula `veiculos.consumo_medio_kml` = média de `km_l` de TODAS as utilizações daquele veículo onde `km_l is not null` (ignora registros sem litros e onde `km_retorno <= km_saida`).
+- Atualiza `veiculos.km_atual` para o `MAX(km_retorno)` do veículo entre todas as utilizações (nunca retrocede; usa a utilização mais recente/maior). Só executa se houver `km_retorno` informado.
 
-Cards: CRLV (`crlv_vencimento`), IPVA (`ipva_vencimento` + `ipva_status` + valor), Seguro (`seguro_fim`, mostra seguradora/apólice), Inspeção (`inspecao_proxima`), Rastreador (badge sim/não, sem vencimento). Campos identificadores (renavam, chassi, número motor) em sub-card "Identificação" sem badge.
+Isto garante recálculo automático em insert/update/delete (corrige bugs de duplicidade e sobrescrita com valor antigo).
 
-Helper inline `statusDoc(date, extra?)` que retorna `{ label, classe }`.
+## 2. Tipos — `src/lib/types.ts`
 
-## 3. Widget no Dashboard (`src/pages/Dashboard.tsx`)
+- `Veiculo`: adicionar `km_inicial?: number | null`, `consumo_medio_kml?: number | null`.
+- `Agendamento`: adicionar `litros_abastecidos?: number | null`, `km_l?: number | null`.
 
-Adicionar card "Documentos vencendo (60 dias)" no grid principal de gráficos (após o card "Top 3 veículos", `lg:col-span-3`). Lista ordenada por menor `diasRestantes`:
+## 3. Frontend — `src/pages/Agendamentos.tsx` (modal de devolução)
 
-- Linha: `{placa} – {marca} {modelo}` · tipo do documento · badge "X dias" (vermelho se ≤ 0/pendente, amarelo se ≤ 30, verde caso contrário).
-- Estado vazio: "Nenhum documento vencendo nos próximos 60 dias."
+- Adicionar input numérico `Litros abastecidos (L)` no formulário de devolução (`retForm`).
+- Em `confirmarDevolucao`, validar:
+  1. `km_retorno != null` e `km_retorno > km_saida` → senão toast erro "Km de retorno deve ser maior que Km de saída".
+  2. `km_retorno >= veiculo.km_atual` → senão toast erro "Km de retorno não pode ser menor que o Km atual do veículo (X)".
+  3. `litros_abastecidos > 0` → senão toast erro "Informe litros abastecidos (> 0)".
+- Remover o `update` manual do `km_atual` no veículo (agora feito pelo trigger). Apenas salva o `agendamento` com `km_retorno` e `litros_abastecidos`; recarrega veículos para refletir os novos valores calculados pelo banco.
+- Exibir, após salvar, o `km_l` calculado em mensagem de sucesso ("Consumo desta utilização: X km/L").
 
-Cálculo derivado de `veiculos` já carregados — sem nova query. Considera CRLV, IPVA (vencimento + pendente), Seguro (`seguro_fim`), Inspeção (`inspecao_proxima`).
+## 4. Exibição do consumo no veículo
 
-## 4. Alertas automáticos (`src/hooks/useAlerts.ts`)
+- Em `src/pages/Veiculos.tsx` e/ou `src/pages/VeiculoDetalhe.tsx`, mostrar `consumo_medio_kml` (formatado com `fmtNumber`, sufixo "km/L") junto às demais métricas. Sem alterar layout/design — apenas adicionar campo no card existente.
 
-Dentro do `useMemo`, varrer `veiculos` e gerar `AlertItem` com `level: "critico"` (severidade alta) para cada documento vencido OU vencendo em ≤ 30 dias:
+## 5. Observações
 
-- `tipo: "Documento"`, `titulo: "{Tipo} — {placa}"`, `descricao: "Vence em N dias" | "Vencido há N dias" | "IPVA pendente"`
-- `veiculoId`, `link: '/veiculos/{id}'`
-- IDs estáveis: `doc-crlv-{vid}`, `doc-ipva-{vid}`, `doc-seguro-{vid}`, `doc-inspecao-{vid}` (compatíveis com dismiss).
-
-Sem alterar queries, layout do painel de alertas, ou demais regras existentes.
-
-## Detalhes técnicos
-
-- Datas formatadas com `fmtDate` (já em `America/Sao_Paulo`).
-- `nowSP()` para cálculo de dias restantes.
-- Reaproveitar `Badge` shadcn com `className` para as cores; manter tema dark e acento `#F59E0B` (amarelo já mapeado em tons amber/warning do projeto).
-- Nenhuma alteração em RLS, rotas, permissões, formulário de cadastro de veículo, página `Veiculos.tsx` ou outras telas.
+- Nenhuma alteração em `Abastecimentos.tsx` (que mantém seu próprio cálculo independente).
+- A regra "ignora registro com `km_retorno <= km_saida` ou sem `litros_abastecidos`" é aplicada tanto pelo trigger de cálculo (km_l = null) quanto pela média (que filtra `km_l is not null`).
+- Divisão por zero impossível (validação `litros_abastecidos > 0` no trigger e no frontend).
 
 ## Arquivos
 
-- novo: `supabase_setup/19_migration_v12_documentacao_veicular.sql`
+- novo: `supabase_setup/21_migration_v14_consumo_kml.sql`
 - editado: `src/lib/types.ts`
-- editado: `src/pages/VeiculoDetalhe.tsx`
-- editado: `src/pages/Dashboard.tsx`
-- editado: `src/hooks/useAlerts.ts`
-
-"Inclua também os campos de documentação no formulário de edição do veículo existente, em uma nova aba ou seção 'Documentação', com campos de data para CRLV, IPVA, Seguro e Inspeção, e toggle para rastreador instalado."
+- editado: `src/pages/Agendamentos.tsx`
+- editado: `src/pages/VeiculoDetalhe.tsx` (exibir consumo médio)
