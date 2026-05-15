@@ -388,10 +388,6 @@ export default function Agendamentos() {
       });
       return;
     }
-    if (retForm.litros_abastecidos == null || retForm.litros_abastecidos <= 0) {
-      toast({ title: "Informe litros abastecidos (maior que 0).", variant: "destructive" });
-      return;
-    }
     if (!retForm.foto_url) {
       toast({ title: "Foto do hodômetro obrigatória", variant: "destructive" });
       return;
