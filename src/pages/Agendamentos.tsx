@@ -859,28 +859,11 @@ export default function Agendamentos() {
                   <p className="text-xs text-muted-foreground">Esse KM virará o KM de saída do próximo agendamento.</p>
                 )}
               </div>
-              <div className="space-y-1.5">
-                <Label>Litros abastecidos (L) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Ex.: 25,50"
-                  value={retForm.litros_abastecidos ?? ""}
-                  onChange={(e) => setRetForm(s => ({ ...s, litros_abastecidos: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                  aria-invalid={litrosInvalido}
-                  className={litrosInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
-                />
-                {litrosInvalido ? (
-                  <p className="text-xs text-destructive">Litros deve ser maior que 0.</p>
-                ) : kmlPrev != null ? (
-                  <p className="text-xs text-success">
-                    Consumo desta utilização: <strong>{kmlPrev.toFixed(2)} km/L</strong> ({fmtNumber(distanciaPrev!)} km)
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Necessário para calcular o consumo (km/L).</p>
-                )}
-              </div>
+              {distanciaPrev != null && (
+                <p className="text-xs text-success">
+                  Distância prevista: <strong>{fmtNumber(distanciaPrev)} km</strong>. O consumo (km/L) é calculado automaticamente pelos abastecimentos.
+                </p>
+              )}
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-2"><Camera className="h-4 w-4" />Foto do hodômetro *</Label>
                 {!retForm.foto_url ? (
