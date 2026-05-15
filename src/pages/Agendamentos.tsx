@@ -145,7 +145,7 @@ export default function Agendamentos() {
 
   // Devolução
   const [returning, setReturning] = useState<Agendamento | null>(null);
-  const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string; foto_url?: string }>({});
+  const [retForm, setRetForm] = useState<{ km_retorno?: number; litros_abastecidos?: number; observacoes?: string; foto_url?: string }>({});
   
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [savingDevolucao, setSavingDevolucao] = useState(false);
@@ -370,11 +370,26 @@ export default function Agendamentos() {
   // NOTA: como simplificamos para 2 status, "cancelado" = encerrado (não conta mais).
   const confirmarDevolucao = async () => {
     if (!returning) return;
-    if (retForm.km_retorno == null || retForm.km_retorno < (returning.km_saida ?? 0)) {
+    const kmSaida = returning.km_saida ?? 0;
+    const veic = veiculoMap[returning.veiculo_id];
+    const kmAtualVeic = veic?.km_atual ?? 0;
+    if (retForm.km_retorno == null || Number.isNaN(retForm.km_retorno)) {
+      toast({ title: "Informe o Km de retorno", variant: "destructive" });
+      return;
+    }
+    if (retForm.km_retorno <= kmSaida) {
+      toast({ title: "Km de retorno deve ser maior que o Km de saída.", variant: "destructive" });
+      return;
+    }
+    if (retForm.km_retorno < kmAtualVeic) {
       toast({
-        title: "Km de retorno inválido. O valor não pode ser menor que o Km de saída.",
+        title: `Km de retorno não pode ser menor que o Km atual do veículo (${fmtNumber(kmAtualVeic)}).`,
         variant: "destructive",
       });
+      return;
+    }
+    if (retForm.litros_abastecidos == null || retForm.litros_abastecidos <= 0) {
+      toast({ title: "Informe litros abastecidos (maior que 0).", variant: "destructive" });
       return;
     }
     if (!retForm.foto_url) {
@@ -384,18 +399,25 @@ export default function Agendamentos() {
     setSavingDevolucao(true);
     try {
       const obsFinal = `[Foto hodômetro: ${retForm.foto_url}]${retForm.observacoes ? " " + retForm.observacoes : returning.observacoes ? " " + returning.observacoes : ""}`;
+      // O km_atual e o consumo_medio_kml do veículo são atualizados automaticamente
+      // pelo trigger trg_sync_veiculo_apos_agendamento no banco.
       await update(returning.id, {
         km_retorno: retForm.km_retorno,
+        litros_abastecidos: retForm.litros_abastecidos,
         data_retorno_real: new Date().toISOString(),
         observacoes: obsFinal,
         status: "cancelado",
       } as Partial<Agendamento>);
-      await (supabase.from("veiculos") as any).update({ km_atual: retForm.km_retorno }).eq("id", returning.veiculo_id);
       await reloadVeiculos();
+      const distancia = retForm.km_retorno - kmSaida;
+      const kml = distancia / retForm.litros_abastecidos;
       setReturning(null);
       setRetForm({});
       playReturnBeeps();
-      toast({ title: "Devolução registrada", description: "Finalize o checklist para concluir o processo." });
+      toast({
+        title: "Devolução registrada",
+        description: `Consumo desta utilização: ${kml.toFixed(2)} km/L. Finalize o checklist para concluir.`,
+      });
       navigate("/checklists");
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });

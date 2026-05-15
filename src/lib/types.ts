@@ -90,6 +90,8 @@ export interface Veiculo {
   inspecao_data?: string | null;
   inspecao_proxima?: string | null;
   rastreador_instalado?: boolean | null;
+  km_inicial?: number | null;
+  consumo_medio_kml?: number | null;
 }
 export interface Motorista { id: string; nome: string; cnh_numero: string; cnh_categoria: string; cnh_validade: string; telefone: string | null; email: string | null; cargo: string | null; status: MotoristaStatus; foto_url: string | null; user_id: string | null; created_at: string; }
 export interface Manutencao {
@@ -108,7 +110,7 @@ export interface Manutencao {
 }
 export interface Abastecimento { id: string; veiculo_id: string; motorista_id: string | null; data: string; km_atual: number; litros: number; valor_total: number; posto: string | null; consumo_km_l: number | null; custo_por_km: number | null; created_at: string; }
 export interface Checklist { id: string; veiculo_id: string; motorista_id: string | null; data: string; pneus_ok: boolean; luzes_ok: boolean; combustivel_ok: boolean; nivel_oleo_ok: boolean; observacoes: string | null; fotos_urls: string[] | null; status: ChecklistStatus; created_at: string; }
-export interface Agendamento { id: string; veiculo_id: string; motorista_id: string; data_saida: string; data_retorno_prevista: string; data_retorno_real: string | null; destino: string | null; km_saida: number | null; km_retorno: number | null; status: AgendamentoStatus; observacoes: string | null; created_at: string; }
+export interface Agendamento { id: string; veiculo_id: string; motorista_id: string; data_saida: string; data_retorno_prevista: string; data_retorno_real: string | null; destino: string | null; km_saida: number | null; km_retorno: number | null; status: AgendamentoStatus; observacoes: string | null; created_at: string; litros_abastecidos?: number | null; km_l?: number | null; }
 export interface Multa { id: string; veiculo_id: string; motorista_id: string | null; data_infracao: string; tipo_infracao: string; valor: number; pontos_cnh: number; status_pagamento: MultaStatus; auto_infracao: string | null; created_at: string; }
 export interface UsuarioPerfil { id: string; user_id: string; motorista_id: string; tipo_conta: TipoConta; permissoes: Permissoes; ativo: boolean; must_change_password: boolean; created_at: string; last_login: string | null; }
 export interface Request {
