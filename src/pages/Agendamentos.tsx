@@ -399,20 +399,18 @@ export default function Agendamentos() {
       // pelo trigger trg_sync_veiculo_apos_agendamento no banco.
       await update(returning.id, {
         km_retorno: retForm.km_retorno,
-        litros_abastecidos: retForm.litros_abastecidos,
         data_retorno_real: new Date().toISOString(),
         observacoes: obsFinal,
         status: "cancelado",
       } as Partial<Agendamento>);
       await reloadVeiculos();
       const distancia = retForm.km_retorno - kmSaida;
-      const kml = distancia / retForm.litros_abastecidos;
       setReturning(null);
       setRetForm({});
       playReturnBeeps();
       toast({
         title: "Devolução registrada",
-        description: `Consumo desta utilização: ${kml.toFixed(2)} km/L. Finalize o checklist para concluir.`,
+        description: `Distância percorrida: ${fmtNumber(distancia)} km. Finalize o checklist para concluir.`,
       });
       navigate("/checklists");
     } catch (e: any) {
