@@ -895,7 +895,7 @@ export default function Agendamentos() {
               <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
               <Button
                 variant="brand"
-                disabled={savingDevolucao || uploadingFoto || kmInvalido || kmAbaixoAtual || litrosInvalido || kmRetorno == null || retForm.litros_abastecidos == null}
+                disabled={savingDevolucao || uploadingFoto || kmInvalido || kmAbaixoAtual || kmRetorno == null}
                 onClick={confirmarDevolucao}
               >
                 {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
