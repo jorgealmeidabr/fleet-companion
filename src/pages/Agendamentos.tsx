@@ -850,12 +850,61 @@ export default function Agendamentos() {
                   aria-invalid={kmInvalido}
                   className={kmInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+            const kmAtualVeic = veiculoMap[returning.veiculo_id]?.km_atual ?? 0;
+            const kmAbaixoAtual = kmRetorno != null && kmRetorno < kmAtualVeic;
+            const litrosInvalido = retForm.litros_abastecidos != null && retForm.litros_abastecidos <= 0;
+            const distanciaPrev = kmRetorno != null && kmRetorno > kmSaida ? kmRetorno - kmSaida : null;
+            const kmlPrev = distanciaPrev != null && retForm.litros_abastecidos && retForm.litros_abastecidos > 0
+              ? (distanciaPrev / retForm.litros_abastecidos) : null;
+            return (
+            <>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Veículo <span className="font-mono font-medium text-foreground">{veiculoMap[returning.veiculo_id]?.placa}</span> •
+                Km saída: {fmtNumber(kmSaida)}
+              </p>
+              <div className="space-y-1.5">
+                <Label>Km de retorno (hodômetro) *</Label>
+                <Input
+                  type="number"
+                  placeholder="Informe o KM atual"
+                  value={retForm.km_retorno ?? ""}
+                  onChange={(e) => setRetForm(s => ({ ...s, km_retorno: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                  aria-invalid={kmInvalido || kmAbaixoAtual}
+                  className={(kmInvalido || kmAbaixoAtual) ? "border-destructive focus-visible:ring-destructive" : ""}
+                />
                 {kmInvalido ? (
                   <p className="text-xs text-destructive">
-                    Km de retorno inválido. O valor não pode ser menor que o Km de saída.
+                    Km de retorno deve ser maior que o Km de saída ({fmtNumber(kmSaida)}).
+                  </p>
+                ) : kmAbaixoAtual ? (
+                  <p className="text-xs text-destructive">
+                    Km de retorno não pode ser menor que o Km atual do veículo ({fmtNumber(kmAtualVeic)}).
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">Esse KM virará o KM de saída do próximo agendamento.</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Litros abastecidos (L) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Ex.: 25,50"
+                  value={retForm.litros_abastecidos ?? ""}
+                  onChange={(e) => setRetForm(s => ({ ...s, litros_abastecidos: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                  aria-invalid={litrosInvalido}
+                  className={litrosInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
+                />
+                {litrosInvalido ? (
+                  <p className="text-xs text-destructive">Litros deve ser maior que 0.</p>
+                ) : kmlPrev != null ? (
+                  <p className="text-xs text-success">
+                    Consumo desta utilização: <strong>{kmlPrev.toFixed(2)} km/L</strong> ({fmtNumber(distanciaPrev!)} km)
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Necessário para calcular o consumo (km/L).</p>
                 )}
               </div>
               <div className="space-y-1.5">
