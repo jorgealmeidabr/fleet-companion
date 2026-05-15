@@ -145,7 +145,7 @@ export default function Agendamentos() {
 
   // Devolução
   const [returning, setReturning] = useState<Agendamento | null>(null);
-  const [retForm, setRetForm] = useState<{ km_retorno?: number; litros_abastecidos?: number; observacoes?: string; foto_url?: string }>({});
+  const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string; foto_url?: string }>({});
   
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [savingDevolucao, setSavingDevolucao] = useState(false);
