@@ -145,7 +145,7 @@ export default function Agendamentos() {
 
   // Devolução
   const [returning, setReturning] = useState<Agendamento | null>(null);
-  const [retForm, setRetForm] = useState<{ km_retorno?: number; litros_abastecidos?: number; observacoes?: string; foto_url?: string }>({});
+  const [retForm, setRetForm] = useState<{ km_retorno?: number; observacoes?: string; foto_url?: string }>({});
   
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [savingDevolucao, setSavingDevolucao] = useState(false);
@@ -388,10 +388,6 @@ export default function Agendamentos() {
       });
       return;
     }
-    if (retForm.litros_abastecidos == null || retForm.litros_abastecidos <= 0) {
-      toast({ title: "Informe litros abastecidos (maior que 0).", variant: "destructive" });
-      return;
-    }
     if (!retForm.foto_url) {
       toast({ title: "Foto do hodômetro obrigatória", variant: "destructive" });
       return;
@@ -403,20 +399,18 @@ export default function Agendamentos() {
       // pelo trigger trg_sync_veiculo_apos_agendamento no banco.
       await update(returning.id, {
         km_retorno: retForm.km_retorno,
-        litros_abastecidos: retForm.litros_abastecidos,
         data_retorno_real: new Date().toISOString(),
         observacoes: obsFinal,
         status: "cancelado",
       } as Partial<Agendamento>);
       await reloadVeiculos();
       const distancia = retForm.km_retorno - kmSaida;
-      const kml = distancia / retForm.litros_abastecidos;
       setReturning(null);
       setRetForm({});
       playReturnBeeps();
       toast({
         title: "Devolução registrada",
-        description: `Consumo desta utilização: ${kml.toFixed(2)} km/L. Finalize o checklist para concluir.`,
+        description: `Distância percorrida: ${fmtNumber(distancia)} km. Finalize o checklist para concluir.`,
       });
       navigate("/checklists");
     } catch (e: any) {
@@ -835,10 +829,7 @@ export default function Agendamentos() {
             const kmInvalido = kmRetorno != null && !Number.isNaN(kmRetorno) && kmRetorno <= kmSaida;
             const kmAtualVeic = veiculoMap[returning.veiculo_id]?.km_atual ?? 0;
             const kmAbaixoAtual = kmRetorno != null && kmRetorno < kmAtualVeic;
-            const litrosInvalido = retForm.litros_abastecidos != null && retForm.litros_abastecidos <= 0;
             const distanciaPrev = kmRetorno != null && kmRetorno > kmSaida ? kmRetorno - kmSaida : null;
-            const kmlPrev = distanciaPrev != null && retForm.litros_abastecidos && retForm.litros_abastecidos > 0
-              ? (distanciaPrev / retForm.litros_abastecidos) : null;
             return (
             <>
             <div className="space-y-3">
@@ -868,28 +859,11 @@ export default function Agendamentos() {
                   <p className="text-xs text-muted-foreground">Esse KM virará o KM de saída do próximo agendamento.</p>
                 )}
               </div>
-              <div className="space-y-1.5">
-                <Label>Litros abastecidos (L) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Ex.: 25,50"
-                  value={retForm.litros_abastecidos ?? ""}
-                  onChange={(e) => setRetForm(s => ({ ...s, litros_abastecidos: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                  aria-invalid={litrosInvalido}
-                  className={litrosInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
-                />
-                {litrosInvalido ? (
-                  <p className="text-xs text-destructive">Litros deve ser maior que 0.</p>
-                ) : kmlPrev != null ? (
-                  <p className="text-xs text-success">
-                    Consumo desta utilização: <strong>{kmlPrev.toFixed(2)} km/L</strong> ({fmtNumber(distanciaPrev!)} km)
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Necessário para calcular o consumo (km/L).</p>
-                )}
-              </div>
+              {distanciaPrev != null && (
+                <p className="text-xs text-success">
+                  Distância prevista: <strong>{fmtNumber(distanciaPrev)} km</strong>. O consumo (km/L) é calculado automaticamente pelos abastecimentos.
+                </p>
+              )}
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-2"><Camera className="h-4 w-4" />Foto do hodômetro *</Label>
                 {!retForm.foto_url ? (
@@ -921,7 +895,7 @@ export default function Agendamentos() {
               <Button variant="outline" onClick={() => { setReturning(null); setRetForm({}); }}>Cancelar</Button>
               <Button
                 variant="brand"
-                disabled={savingDevolucao || uploadingFoto || kmInvalido || kmAbaixoAtual || litrosInvalido || kmRetorno == null || retForm.litros_abastecidos == null}
+                disabled={savingDevolucao || uploadingFoto || kmInvalido || kmAbaixoAtual || kmRetorno == null}
                 onClick={confirmarDevolucao}
               >
                 {savingDevolucao ? "Salvando..." : "Confirmar devolução"}
