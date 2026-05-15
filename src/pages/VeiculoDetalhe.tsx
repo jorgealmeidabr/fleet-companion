@@ -158,6 +158,17 @@ export default function VeiculoDetalhe() {
               <div><dt className="text-muted-foreground">Tipo</dt><dd className="font-medium capitalize">{veiculo.tipo}</dd></div>
               <div><dt className="text-muted-foreground">Combustível</dt><dd className="font-medium capitalize">{veiculo.combustivel}</dd></div>
               <div><dt className="text-muted-foreground">Km atual</dt><dd className="font-medium">{fmtNumber(veiculo.km_atual)}</dd></div>
+              {veiculo.km_inicial != null && (
+                <div><dt className="text-muted-foreground">Km inicial</dt><dd className="font-medium">{fmtNumber(veiculo.km_inicial)}</dd></div>
+              )}
+              <div className="col-span-2">
+                <dt className="text-muted-foreground">Consumo médio</dt>
+                <dd className="font-medium">
+                  {veiculo.consumo_medio_kml != null
+                    ? `${fmtNumber(veiculo.consumo_medio_kml, { maximumFractionDigits: 2 })} km/L`
+                    : "—"}
+                </dd>
+              </div>
             </dl>
           </CardContent>
         </Card>
